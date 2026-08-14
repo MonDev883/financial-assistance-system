@@ -1,0 +1,161 @@
+const mongoose = require("mongoose")
+
+const applicationSchema = new mongoose.Schema({
+
+  // ── Link to window ────────────────────
+  applicationWindow: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ApplicationWindow",
+    required: true
+  },
+
+  // ── Reference number ──────────────────
+  referenceNumber: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  // ── Personal information ──────────────
+  lastName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  firstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  middleName: {
+    type: String,
+    default: "",
+    trim: true
+  },
+
+  dateOfBirth: {
+    type: String,
+    required: true
+  },
+
+  gender: {
+    type: String,
+    required: true,
+    enum: ["Male", "Female", "Other"]
+  },
+
+  civilStatus: {
+    type: String,
+    required: true,
+    enum: ["Single", "Married", "Widowed", "Separated"]
+  },
+
+  // ── Address ───────────────────────────
+  houseNo: {
+    type: String,
+    required: true
+  },
+
+  street: {
+    type: String,
+    required: true
+  },
+
+  barangay: {
+    type: String,
+    required: true
+  },
+
+  city: {
+    type: String,
+    required: true
+  },
+
+  province: {
+    type: String,
+    required: true
+  },
+
+  zipCode: {
+    type: String,
+    required: true
+  },
+
+  // ── Contact ───────────────────────────
+  contactNumber: {
+    type: String,
+    required: true
+  },
+
+  email: {
+    type: String,
+    default: ""
+  },
+
+  // ── Assistance details ────────────────
+  assistanceType: {
+    type: String,
+    required: true,
+    enum: ["Medical", "Burial", "Educational", "Calamity", "Other"]
+  },
+
+  reason: {
+    type: String,
+    required: true
+  },
+
+  // ── Auto-assigned amount ──────────────
+  amountAssigned: {
+    type: Number,
+    default: 0
+  },
+
+  // ── Submission timestamp ──────────────
+  submittedAt: {
+    type: Date,
+    default: Date.now
+  },
+
+  // ── Approval workflow ─────────────────
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected", "paid"],
+    default: "pending"
+  },
+
+  approvedAmount: {
+    type: Number,
+    default: 0
+  },
+
+  payDate: {
+    type: Date,
+    default: null
+  },
+
+  remarks: {
+    type: String,
+    default: ""
+  },
+
+  rejectionReason: {
+    type: String,
+    default: ""
+  },
+
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Staff",
+    default: null
+  },
+
+  reviewedAt: {
+    type: Date,
+    default: null
+  }
+
+})
+
+module.exports = mongoose.model("Application", applicationSchema)

@@ -1,0 +1,40 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+
+// ── Public pages
+import ApplyForm    from "./pages/Apply"
+import SuccessPage  from "./pages/Success"
+import StatusChecker from "./pages/StatusChecker"
+
+// ── Staff pages
+import StaffLogin     from "./pages/staff/Login"
+import StaffDashboard from "./pages/staff/Dashboard"
+import WindowManager  from "./pages/staff/WindowManager"
+import StaffManager   from "./pages/staff/StaffManager"
+import Analytics      from "./pages/staff/Analytics"
+
+function App(){
+  return (
+    <BrowserRouter>
+      <Routes>
+
+        {/* ── Default ── */}
+        <Route path="/" element={<Navigate to="/staff/login" />} />
+
+        {/* ── Public application form ── */}
+        <Route path="/apply/:windowId" element={<ApplyForm />} />
+        <Route path="/success"         element={<SuccessPage />} />
+        <Route path="/check-status"    element={<StatusChecker />} />
+
+        {/* ── Staff ── */}
+        <Route path="/staff/login"     element={<StaffLogin />} />
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/staff/windows"   element={<WindowManager />} />
+        <Route path="/staff/accounts"  element={<StaffManager />} />
+        <Route path="/staff/analytics/:windowId" element={<Analytics />} />
+
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
