@@ -109,17 +109,6 @@ function StaffLogin(){
 
         </form>
 
-        {/* Back to claimant login */}
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p className="text-xs text-gray-400 mb-3">Are you a claimant?</p>
-          <Link
-            to="/claimant/login"
-            className="inline-block w-full py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition text-center"
-          >
-            👤 Go to Claimant Login
-          </Link>
-        </div>
-
       </div>
     </div>
   )
