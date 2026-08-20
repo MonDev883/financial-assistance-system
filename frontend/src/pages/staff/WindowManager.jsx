@@ -437,6 +437,14 @@ function WindowManager(){
                       >
                         View Applications
                       </Link>
+
+                      <Link
+                        to={"/staff/batches/" + w._id}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"
+                      >
+                        📦 Manage Batches
+                      </Link>
+
                       <Link
                         to={"/staff/analytics/" + w._id}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"

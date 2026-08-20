@@ -171,15 +171,15 @@ async function sendApprovalEmail(email, data){
         has been <strong style="color:#16A34A;">APPROVED</strong> by City Hall.
       </p>
 
-      <!-- Amount Box -->
-      <div style="background:linear-gradient(135deg, #16A34A, #14532D); border-radius:12px; padding:24px; text-align:center; margin-bottom:28px;">
-        <p style="margin:0 0 4px; color:#BBF7D0; font-size:12px; text-transform:uppercase; letter-spacing:1px;">
+  <!-- Amount Box -->
+      <div style="background-color:#16A34A; background:#16A34A; border-radius:12px; padding:24px; text-align:center; margin-bottom:28px;">
+        <p style="margin:0 0 4px; color:#ffffff; font-size:12px; text-transform:uppercase; letter-spacing:1px; font-weight:600;">
           Approved Amount
         </p>
-        <p style="margin:0; color:white; font-size:40px; font-weight:800;">
+        <p style="margin:0; color:#ffffff; font-size:40px; font-weight:800;">
           ₱${Number(data.approvedAmount).toLocaleString()}
         </p>
-        <p style="margin:8px 0 0; color:#BBF7D0; font-size:13px;">
+        <p style="margin:8px 0 0; color:#ffffff; font-size:13px; font-weight:600;">
           📅 Claim on: <strong>${data.payDate}</strong>
         </p>
       </div>
@@ -203,11 +203,13 @@ async function sendApprovalEmail(email, data){
         <p style="margin:0 0 8px; font-weight:700; color:#854D0E; font-size:14px;">
           ⚠️ Important Instructions:
         </p>
-        <ul style="margin:0; padding-left:20px; color:#92400E; font-size:14px; line-height:1.8;">
+        <ul style="color: #854D0E; font-size: 14px; margin: 10px 0 0; padding-left: 20px;">
           <li>Visit City Hall on <strong>${data.payDate}</strong></li>
+          ${data.timeSlot ? `<li>Your time slot: <strong>${data.timeSlot}</strong></li>` : ""}
+          ${data.batchName ? `<li>Your batch: <strong>${data.batchName}</strong></li>` : ""}
           <li>Bring a valid government-issued ID</li>
           <li>Present your reference number: <strong>${data.referenceNumber}</strong></li>
-          <li>Claim during office hours: <strong>8:00 AM – 5:00 PM</strong></li>
+          <li>Please arrive on time — late arrivals may be rescheduled</li>
         </ul>
       </div>
 
@@ -346,11 +348,11 @@ async function sendPaidEmail(email, data){
       </div>
 
       <!-- Thank you box -->
-      <div style="background:linear-gradient(135deg, #1D4ED8, #1e3a8a); border-radius:12px; padding:24px; text-align:center; margin-bottom:24px;">
-        <p style="margin:0 0 8px; color:#BFDBFE; font-size:13px;">
+      <div style="background-color:#1D4ED8; background:#1D4ED8; border-radius:12px; padding:24px; text-align:center; margin-bottom:24px;">
+        <p style="margin:0 0 8px; color:#ffffff; font-size:13px; font-weight:600;">
           Thank you for being part of our community.
         </p>
-        <p style="margin:0; color:white; font-size:18px; font-weight:700;">
+        <p style="margin:0; color:#ffffff; font-size:18px; font-weight:700;">
           City Hall is here to serve you. 🏛️
         </p>
       </div>

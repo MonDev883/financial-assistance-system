@@ -194,6 +194,36 @@ function StatusChecker(){
                   </div>
                 )}
 
+                {result.batch && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2">
+                      Payout Schedule
+                    </p>
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-1">
+                      <p className="font-bold text-red-700 text-sm">
+                        📦 {result.batch.batchName}
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        📅 {new Date(result.batch.payDate).toLocaleDateString("en-PH", {
+                          weekday: "long", year: "numeric",
+                          month: "long", day: "numeric"
+                        })}
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        🕐 {result.batch.startTime} – {result.batch.endTime}
+                      </p>
+                      {result.batch.notes && (
+                        <p className="text-xs text-gray-500">
+                          📝 {result.batch.notes}
+                        </p>
+                      )}
+                      <p className="text-xs text-red-600 font-semibold mt-2">
+                        ⚠️ Please be at City Hall on time. Bring a valid ID and your reference number.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Submitted</span>
                   <span className="font-semibold text-gray-800">

@@ -94,17 +94,20 @@ const applicationSchema = new mongoose.Schema({
     default: ""
   },
 
-  // ── Assistance details ────────────────
+  // ── Assistance details ────────────────────
   assistanceType: {
     type: String,
     required: true,
     enum: ["Medical", "Burial", "Educational", "Calamity", "Other"]
   },
 
-  reason: {
+  // ── Selfie for identity verification ──────
+  selfiePhotoPath: {
     type: String,
     required: true
   },
+
+  // ── Auto-assigned amount ──────────────────
 
   // ── Auto-assigned amount ──────────────
   amountAssigned: {
@@ -116,6 +119,13 @@ const applicationSchema = new mongoose.Schema({
   submittedAt: {
     type: Date,
     default: Date.now
+  },
+
+// ── Payout batch assignment ───────────────
+  payoutBatch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PayoutBatch",
+    default: null
   },
 
   // ── Approval workflow ─────────────────

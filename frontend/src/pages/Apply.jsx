@@ -1,3 +1,4 @@
+import SelfieCapture from "../components/SelfieCapture"
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import API from "../api"
@@ -13,23 +14,24 @@ function ApplyForm(){
   const [error,      setError]      = useState("")
 
   const [form, setForm] = useState({
-    lastName:      "",
-    firstName:     "",
-    middleName:    "",
-    dateOfBirth:   "",
-    gender:        "",
-    civilStatus:   "",
-    houseNo:       "",
-    street:        "",
-    barangay:      "",
-    city:          "",
-    province:      "",
-    zipCode:       "",
-    contactNumber: "",
-    email:         "",
-    assistanceType: "",
-    reason:        ""
+    lastName:         "",
+    firstName:        "",
+    middleName:       "",
+    dateOfBirth:      "",
+    gender:           "",
+    civilStatus:      "",
+    houseNo:          "",
+    street:           "",
+    barangay:         "",
+    city:             "",
+    province:         "",
+    zipCode:          "",
+    contactNumber:    "",
+    email:            "",
+    assistanceType:   ""
   })
+
+  const [selfie, setSelfie] = useState(null)
 
   useEffect(() => {
     checkWindow()
@@ -64,7 +66,7 @@ function ApplyForm(){
       "gender", "civilStatus",
       "houseNo", "street", "barangay",
       "city", "province", "zipCode",
-      "contactNumber", "assistanceType", "reason"
+      "contactNumber", "assistanceType"
     ]
 
     for(const field of required){
@@ -74,10 +76,23 @@ function ApplyForm(){
       }
     }
 
+    if(!selfie){
+      setError("Please upload a selfie photo for identity verification")
+      return
+    }
+
     setLoading(true)
 
     try {
-      const res = await API.post(`/applications/submit/${windowId}`, form)
+      const formData = new FormData()
+
+      Object.entries(form).forEach(([key, value]) => {
+        formData.append(key, value)
+      })
+
+      formData.append("selfie", selfie)
+
+      const res = await API.post(`/applications/submit/${windowId}`, formData)
 
       // ── Redirect to success page with result
       navigate("/success", {
@@ -336,53 +351,46 @@ function ApplyForm(){
                 </div>
               </div>
 
-              {/* SECTION 4 — Assistance */}
+             {/* SECTION 6 — Assistance Type */}
               <div className="border-t pt-6">
-                <h3 className={sectionHead}>4. Assistance Details</h3>
-                <div className="space-y-4">
+                <h3 className={sectionHead}>6. Type of Assistance</h3>
+                <div>
+                  <label className={labelClass}>
+                    Type of Assistance <span className="text-red-500">*</span>
+                  </label>
+                  <select className={inputClass} name="assistanceType"
+                    value={form.assistanceType} onChange={handleChange}>
+                    <option value="">Select type of assistance</option>
+                    {["Medical", "Burial", "Educational", "Calamity", "Other"].map(type => (
+                      <option key={type} value={type}>
+                        {type}
+                        {windowInfo?.amounts?.[type] > 0
+                          ? " — ₱" + Number(windowInfo.amounts[type]).toLocaleString()
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
 
-                  <div>
-                    <label className={labelClass}>
-                      Type of Assistance <span className="text-red-500">*</span>
-                    </label>
-                    <select className={inputClass} name="assistanceType"
-                      value={form.assistanceType} onChange={handleChange}>
-                      <option value="">Select type of assistance</option>
-                      {["Medical", "Burial", "Educational", "Calamity", "Other"].map(type => (
-                        <option key={type} value={type}>
-                          {type}
-                          {windowInfo?.amounts?.[type] > 0
-                            ? ` — ₱${Number(windowInfo.amounts[type]).toLocaleString()}`
-                            : ""}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Show assigned amount */}
-                    {form.assistanceType && windowInfo?.amounts?.[form.assistanceType] > 0 && (
-                      <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                        <p className="text-xs text-gray-500">Assistance Amount</p>
-                        <p className="text-2xl font-bold text-green-700">
-                          ₱{Number(windowInfo.amounts[form.assistanceType]).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Fixed amount set by City Hall for {form.assistanceType} assistance
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>
-                      Reason for Application <span className="text-red-500">*</span>
-                    </label>
-                    <textarea className={`${inputClass} resize-none`}
-                      name="reason" rows={4}
-                      placeholder="Briefly explain your situation and why you need financial assistance..."
-                      value={form.reason} onChange={handleChange} />
-                  </div>
-
+                  {form.assistanceType && windowInfo?.amounts?.[form.assistanceType] > 0 && (
+                    <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                      <p className="text-xs text-gray-500">Assistance Amount</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        ₱{Number(windowInfo.amounts[form.assistanceType]).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Fixed amount set by City Hall for {form.assistanceType} assistance
+                      </p>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+            {/* SECTION 7 — Selfie Camera Capture */}
+              <div className="border-t pt-6">
+                <h3 className={sectionHead}>7. Identity Verification</h3>
+
+                <SelfieCapture onCapture={setSelfie} />
+
               </div>
 
               {/* Submit */}

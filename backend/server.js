@@ -18,7 +18,11 @@ const compression = require("compression")
 const app = express()
 
 // ── Security headers
-app.use(helmet({ contentSecurityPolicy: false }))
+// ── Security headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}))
 
 // ── Compression
 app.use(compression())
@@ -32,6 +36,9 @@ app.use(cors({
 
 // ── Parse JSON
 app.use(express.json({ limit: "10mb" }))
+
+// ── Serve uploaded files (before rate limiter — images shouldn't count against the quota)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 
 // ── Global rate limiter (500 requests per 15 minutes)
 const globalLimiter = rateLimit({
@@ -49,13 +56,13 @@ const loginLimiter = rateLimit({
 })
 app.use("/api/staff/login", loginLimiter)
 
-// ── Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")))
+
 
 // ── Routes
 app.use("/api/applications", require("./routes/applicationRoutes"))
 app.use("/api/staff",        require("./routes/staffRoutes"))
 app.use("/api/windows",      require("./routes/windowRoutes"))
+app.use("/api/batches",      require("./routes/batchRoutes"))
 
 // ── Health check
 app.get("/health", (req, res) => {

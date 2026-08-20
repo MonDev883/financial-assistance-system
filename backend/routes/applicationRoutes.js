@@ -11,10 +11,48 @@ const {
   sendPaidEmail
 } = require("../services/emailService")
 
+const multer  = require("multer")
+const path    = require("path")
+const fs      = require("fs")
+
+// ── Absolute upload directory (backend/uploads)
+const uploadDir = path.join(__dirname, "..", "uploads")
+
+if(!fs.existsSync(uploadDir)){
+  fs.mkdirSync(uploadDir, { recursive: true })
+}
+
+// ── Multer setup for selfie upload
+const storage = multer.diskStorage({
+    destination: function(req, file, cb){
+    cb(null, uploadDir)
+  },
+  filename: function(req, file, cb){
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9)
+    const ext = path.extname(file.originalname)
+    cb(null, "selfie-" + uniqueName + ext)
+  }
+})
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+  if(allowed.includes(file.mimetype)){
+    cb(null, true)
+  } else {
+    cb(new Error("Only image files allowed"), false)
+  }
+}
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+})
+
 // ========================
 // SUBMIT APPLICATION (PUBLIC)
 // ========================
-router.post("/submit/:windowId", async (req, res) => {
+router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
   try {
 
     // ── LINE 1 ── Find and validate the window
@@ -35,21 +73,28 @@ router.post("/submit/:windowId", async (req, res) => {
 //To be resumed on 07-26-2026 By Mon Dev
 
     const {
-      lastName, firstName, middleName,
-      dateOfBirth, gender, civilStatus,
-      houseNo, street, barangay, city, province, zipCode,
-      contactNumber, email,
-      assistanceType, reason
-    } = req.body
+        lastName, firstName, middleName,
+        dateOfBirth, gender, civilStatus,
+        houseNo, street, barangay, city, province, zipCode,
+        contactNumber, email,
+        assistanceType
+      } = req.body
 
-    // ── LINE 3 ── Validate required fields
-    if(!lastName || !firstName || !dateOfBirth ||
-       !gender || !civilStatus ||
-       !houseNo || !street || !barangay ||
-       !city || !province || !zipCode ||
-       !contactNumber || !assistanceType || !reason){
-      return res.status(400).json({ message: "All required fields must be filled in" })
-    }
+    // ── LINE 3 ── Check selfie uploaded
+      if(!req.file){
+        return res.status(400).json({
+          message: "Selfie photo is required for identity verification"
+        })
+      }
+
+      // ── LINE 3b ── Validate all required fields
+      if(!lastName || !firstName || !dateOfBirth ||
+         !gender || !civilStatus ||
+         !houseNo || !street || !barangay ||
+         !city || !province || !zipCode ||
+         !contactNumber || !assistanceType){
+        return res.status(400).json({ message: "All required fields must be filled in" })
+      }
 
     // ── LINE 4 ── Get auto-assigned amount from window
     const assignedAmount = window.amounts?.[assistanceType] || 0
@@ -95,7 +140,7 @@ router.post("/submit/:windowId", async (req, res) => {
       contactNumber,
       email:             email || "",
       assistanceType,
-      reason,
+      selfiePhotoPath:   req.file.filename,
       amountAssigned:    assignedAmount,
       status:            "pending",
       submittedAt:       now
@@ -199,8 +244,7 @@ router.put("/review/:id", protectStaff, async (req, res) => {
     application.remarks    = remarks || ""
 
     if(status === "approved"){
-      application.approvedAmount = Number(approvedAmount) || application.amountAssigned
-      application.payDate        = new Date(payDate)
+      application.approvedAmount = application.amountAssigned
     }
 
     if(status === "rejected"){
@@ -218,21 +262,9 @@ router.put("/review/:id", protectStaff, async (req, res) => {
             "City Hall Financial Assistance\n" +
             "Ref No: " + application.referenceNumber + "\n" +
             "Status: APPROVED\n" +
-            "Amount: PHP " + Number(approvedAmount).toLocaleString() + "\n" +
-            "Pay Date: " + new Date(payDate).toLocaleDateString("en-PH") + "\n" +
-            "Please visit City Hall on your pay date with valid ID."
-
-          await sendApprovalEmail(application.email, {
-            referenceNumber: application.referenceNumber,
-            name:            application.firstName + " " + application.lastName,
-            assistanceType:  application.assistanceType,
-            approvedAmount,
-            payDate:         new Date(payDate).toLocaleDateString("en-PH", {
-              weekday: "long", year: "numeric",
-              month: "long", day: "numeric"
-            }),
-            remarks
-          })
+            "Amount: PHP " + Number(application.amountAssigned).toLocaleString() + "\n" +
+            "You will be notified of your payout schedule soon.\n" +
+            "Please wait for further instructions."
 
         } else {
           smsMessage =
@@ -307,7 +339,9 @@ router.get("/status/:refNum", async (req, res) => {
   try {
     const application = await Application.findOne({
       referenceNumber: req.params.refNum.toUpperCase()
-    }).populate("applicationWindow", "title startDate endDate")
+    })
+    .populate("applicationWindow", "title startDate endDate")
+    .populate("payoutBatch", "batchName batchNumber payDate startTime endTime notes")
 
     if(!application){
       return res.status(404).json({
@@ -318,7 +352,7 @@ router.get("/status/:refNum", async (req, res) => {
     // ── Return only what claimant needs to see
     res.json({
       referenceNumber: application.referenceNumber,
-      name:            `${application.firstName} ${application.lastName}`,
+      name:            application.firstName + " " + application.lastName,
       assistanceType:  application.assistanceType,
       status:          application.status,
       amountAssigned:  application.amountAssigned,
@@ -327,7 +361,15 @@ router.get("/status/:refNum", async (req, res) => {
       rejectionReason: application.rejectionReason,
       remarks:         application.remarks,
       submittedAt:     application.submittedAt,
-      window:          application.applicationWindow?.title
+      window:          application.applicationWindow?.title,
+      batch: application.payoutBatch ? {
+        batchName:   application.payoutBatch.batchName,
+        batchNumber: application.payoutBatch.batchNumber,
+        payDate:     application.payoutBatch.payDate,
+        startTime:   application.payoutBatch.startTime,
+        endTime:     application.payoutBatch.endTime,
+        notes:       application.payoutBatch.notes
+      } : null
     })
 
   } catch(err){
@@ -390,7 +432,7 @@ router.get("/export/:windowId", protectStaff, async (req, res) => {
       { header: "Contact Number",   key: "contact",       width: 16 },
       { header: "Email",            key: "email",         width: 24 },
       { header: "Assistance Type",  key: "type",          width: 16 },
-      { header: "Reason",           key: "reason",        width: 30 },
+     // { header: "Reason",           key: "reason",        width: 30 }, 08-19-2026
       { header: "Amount Assigned",  key: "amountAssigned",width: 16 },
       { header: "Status",           key: "status",        width: 12 },
       { header: "Approved Amount",  key: "approvedAmount",width: 16 },
@@ -424,7 +466,7 @@ router.get("/export/:windowId", protectStaff, async (req, res) => {
         contact:        app.contactNumber,
         email:          app.email || "",
         type:           app.assistanceType,
-        reason:         app.reason,
+      //  reason:         app.reason, 08-19-2026
         amountAssigned: app.amountAssigned || 0,
         status:         app.status.toUpperCase(),
         approvedAmount: app.approvedAmount || 0,

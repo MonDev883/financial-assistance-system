@@ -529,15 +529,32 @@ function StaffDashboard(){
 
                     </div>
 
-                    {/* Reason */}
-                    <div className="mt-5">
-                      <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2">
-                        Reason for Application
-                      </p>
-                      <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-4 py-3 leading-relaxed">
-                        {app.reason}
-                      </p>
-                    </div>
+                   {/* Selfie Photo */}
+                    {app.selfiePhotoPath && (
+                      <div className="mt-5">
+                        <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2">
+                          Identity Verification — Selfie
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={(window.location.hostname === "localhost"
+                              ? "http://localhost:5001/"
+                              : "https://financial-assistance-system.onrender.com/"
+                            ) + app.selfiePhotoPath.replace(/\\/g, "/")}
+                            alt="Applicant selfie"
+                            className="w-24 h-24 object-cover rounded-full border-4 border-gray-200"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {app.lastName}, {app.firstName}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Selfie taken during application submission
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {app.status === "rejected" && app.rejectionReason && (
                       <div className="mt-4 bg-red-50 border-l-4 border-red-500 px-4 py-3 rounded text-sm text-red-700">
@@ -611,29 +628,18 @@ function StaffDashboard(){
               </div>
             </div>
 
+           {/* Approve info — no pay date needed here */}
             {reviewForm.status === "approved" && (
-              <>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Approved Amount (₱)
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-green-400"
-                    type="number"
-                    value={reviewForm.approvedAmount}
-                    onChange={e => setReviewForm({ ...reviewForm, approvedAmount: e.target.value })}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Pay Date</label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-green-400"
-                    type="date"
-                    value={reviewForm.payDate}
-                    onChange={e => setReviewForm({ ...reviewForm, payDate: e.target.value })}
-                  />
-                </div>
-              </>
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                <p className="text-green-700 text-sm font-semibold mb-1">
+                  ✅ Application will be marked as Approved
+                </p>
+                <p className="text-green-600 text-xs">
+                  Pay date and batch schedule will be assigned later via
+                  Batch Manager. The claimant will be notified by SMS and
+                  email when a batch is assigned.
+                </p>
+              </div>
             )}
 
             {reviewForm.status === "rejected" && (

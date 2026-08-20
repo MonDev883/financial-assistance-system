@@ -11,6 +11,7 @@ import StaffDashboard from "./pages/staff/Dashboard"
 import WindowManager  from "./pages/staff/WindowManager"
 import StaffManager   from "./pages/staff/StaffManager"
 import Analytics      from "./pages/staff/Analytics"
+import BatchManager   from "./pages/staff/BatchManager"
 
 function App(){
   return (
@@ -31,6 +32,7 @@ function App(){
         <Route path="/staff/windows"   element={<WindowManager />} />
         <Route path="/staff/accounts"  element={<StaffManager />} />
         <Route path="/staff/analytics/:windowId" element={<Analytics />} />
+        <Route path="/staff/batches/:windowId"   element={<BatchManager />} />
 
       </Routes>
     </BrowserRouter>
