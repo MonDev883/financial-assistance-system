@@ -17,7 +17,7 @@ router.post("/login", async (req, res) => {
     }
 
     // ── Find staff by email
-    const staff = await Staff.findOne({ email })
+    const staff = await Staff.findOne({ email }).select("+password")
     if(!staff){
       return res.status(400).json({ message: "Invalid email or password" })
     }
@@ -40,9 +40,13 @@ router.post("/login", async (req, res) => {
         type: "staff",
         role: staff.role
       },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+           process.env.JWT_SECRET,
+      { expiresIn: "8h" }
     )
+
+    // ── Audit trail
+    staff.lastLogin = new Date()
+    await staff.save()
 
     res.json({
       token,
@@ -82,8 +86,16 @@ router.post("/create", protectAdmin, async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body
 
-    if(!fullName || !email || !password){
+        if(!fullName || !email || !password){
       return res.status(400).json({ message: "All fields required" })
+    }
+
+    if(password.length < 8){
+      return res.status(400).json({ message: "Password must be at least 8 characters" })
+    }
+
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      return res.status(400).json({ message: "Invalid email format" })
     }
 
     const existing = await Staff.findOne({ email })
@@ -108,7 +120,13 @@ router.post("/create", protectAdmin, async (req, res) => {
       }
     })
 
-  } catch(err){
+     } catch(err){
+    if(err.name === "ValidationError"){
+      return res.status(400).json({ message: Object.values(err.errors)[0].message })
+    }
+    if(err.code === 11000){
+      return res.status(400).json({ message: "Email already exists" })
+    }
     console.error("Create staff error:", err)
     res.status(500).json({ message: "Failed to create staff" })
   }

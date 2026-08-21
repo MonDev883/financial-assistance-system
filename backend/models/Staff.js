@@ -1,4 +1,5 @@
 const mongoose = require("mongoose")
+const bcrypt   = require("bcrypt")
 
 const staffSchema = new mongoose.Schema({
 
@@ -17,9 +18,11 @@ const staffSchema = new mongoose.Schema({
     trim: true
   },
 
-  password: {
-    type: String,
-    required: true
+   password: {
+    type:      String,
+    required:  true,
+    minlength: 8,
+    select:    false      // never returned unless explicitly requested
   },
 
   // ── Role ──────────────────────────────
@@ -35,19 +38,18 @@ const staffSchema = new mongoose.Schema({
     default: true
   },
 
-  createdAt: {
+  lastLogin: {
     type: Date,
-    default: Date.now
+    default: null
   }
+}, { timestamps: true })
 
-})
-
-// ── Hash password before saving ───────
+// ⚠️ This hook only runs on .save() — NOT on findByIdAndUpdate or updateOne.
+// To change a password:  staff.password = newPassword; await staff.save()
+// Using findByIdAndUpdate stores plaintext and login breaks permanently.
 staffSchema.pre("save", async function(){
   if(!this.isModified("password")) return
-
-  const bcrypt = require("bcrypt")
-  this.password = await bcrypt.hash(this.password, 10)
+  this.password = await bcrypt.hash(this.password, 12)
 })
 
 module.exports = mongoose.model("Staff", staffSchema)
