@@ -2,6 +2,10 @@ import { useEffect, useState } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import API from "../../api"
 
+const API_URL = window.location.hostname === "localhost"
+  ? "http://localhost:5001"
+  : "https://financial-assistance-system.onrender.com"
+
 function StaffDashboard(){
 
   const [staff, setStaff]               = useState(null)
@@ -9,6 +13,7 @@ function StaffDashboard(){
   const [loading, setLoading]           = useState(true)
   const [statusFilter, setStatusFilter] = useState("pending")
   const [search, setSearch]             = useState("")
+  const [searchInput, setSearchInput]   = useState("")
   const [selected, setSelected]         = useState([])
   const [showBulk, setShowBulk]         = useState(false)
   const [bulkForm, setBulkForm]         = useState({
@@ -35,6 +40,11 @@ function StaffDashboard(){
 
 //To be resumed by Mon Dev:) on 08-13-2026
   const windowId = new URLSearchParams(location.search).get("window")
+// ── Wait 400ms after typing stops before searching
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 400)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   useEffect(() => {
     const stored = localStorage.getItem("staff")
@@ -45,9 +55,14 @@ function StaffDashboard(){
     setStaff(JSON.parse(stored))
   }, [])
 
-  useEffect(() => {
+   useEffect(() => {
     if(staff) loadApplications()
   }, [statusFilter, windowId, search, staff])
+
+  // ── Clear selections when the visible set changes
+  useEffect(() => {
+    setSelected([])
+  }, [statusFilter, windowId, search])
 
   async function loadApplications(){
     setLoading(true)
@@ -171,11 +186,17 @@ function StaffDashboard(){
   async function handleExport(){
     try {
       const token = localStorage.getItem("staffToken")
-      const url   = "http://localhost:5001/api/applications/export/" +
-                    windowId + "?status=" + statusFilter
-      const res  = await fetch(url, {
+      const url   = `${API_URL}/api/applications/export/${windowId}?status=${statusFilter}`
+      const res   = await fetch(url, {
         headers: { Authorization: "Bearer " + token }
       })
+
+      if(!res.ok){
+        const err = await res.json()
+        alert(err.message || "Export failed")
+        return
+      }
+
       const blob = await res.blob()
       const link = document.createElement("a")
       link.href  = URL.createObjectURL(blob)
@@ -263,8 +284,8 @@ function StaffDashboard(){
           <input
             className="w-full sm:w-96 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
             placeholder="🔍 Search by name, barangay, or reference number..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
           />
         </div>
 
@@ -347,7 +368,7 @@ function StaffDashboard(){
             </p>
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={() => setSearchInput("")}
                 className="mt-3 text-sm text-red-600 hover:underline"
               >
                 Clear search
@@ -537,11 +558,9 @@ function StaffDashboard(){
                         </p>
                         <div className="flex items-center gap-4">
                           <img
-                            src={(window.location.hostname === "localhost"
-                              ? "http://localhost:5001/"
-                              : "https://financial-assistance-system.onrender.com/"
-                            ) + app.selfiePhotoPath.replace(/\\/g, "/")}
+                            src={`${API_URL}/uploads/${app.selfiePhotoPath.split(/[\\/]/).pop()}`}
                             alt="Applicant selfie"
+                            onError={e => { e.target.onerror = null; e.target.src = "/placeholder-avatar.png" }}
                             className="w-24 h-24 object-cover rounded-full border-4 border-gray-200"
                           />
                           <div>

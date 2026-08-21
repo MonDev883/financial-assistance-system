@@ -68,18 +68,19 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
     // ── LINE 1 ── Find and validate the window
     const window = await ApplicationWindow.findById(req.params.windowId)
 
-    if(!window){
+        if(!window){
+      cleanupUpload(req)
       return res.status(404).json({ message: "Application window not found" })
     }
 
     // ── LINE 2 ── Check if window is currently open
     const now = new Date()
-    if(!window.isActive || now < window.startDate || now > window.endDate){
+        if(!window.isActive || now < window.startDate || now > window.endDate){
+      cleanupUpload(req)
       return res.status(400).json({
         message: "This application window is no longer accepting submissions."
       })
     }
-
 //To be resumed on 07-26-2026 By Mon Dev
 
     const {
@@ -103,6 +104,7 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
          !houseNo || !street || !barangay ||
          !city || !province || !zipCode ||
          !contactNumber || !assistanceType){
+        cleanupUpload(req)
         return res.status(400).json({ message: "All required fields must be filled in" })
       }
 
@@ -118,7 +120,8 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         dateOfBirth: dateOfBirth
       })
 
-      if(duplicate){
+            if(duplicate){
+        cleanupUpload(req)
         return res.status(400).json({
           message: `A submission already exists for ${firstName} ${lastName} (DOB: ${dateOfBirth}) in this window. Your reference number is: ${duplicate.referenceNumber}`
         })
@@ -190,7 +193,8 @@ if(email){
       amountAssigned:  application.amountAssigned
     })
 
-  } catch(err){
+    } catch(err){
+    cleanupUpload(req)
     console.error("Submit error:", err)
     res.status(500).json({ message: "Failed to submit application" })
   }
@@ -245,6 +249,9 @@ router.put("/review/:id", protectStaff, async (req, res) => {
       remarks
     } = req.body
 
+    if(!["approved", "rejected"].includes(status)){
+  return res.status(400).json({ message: "Invalid status" })
+}
     const application = await Application.findById(req.params.id)
 
     if(!application){
