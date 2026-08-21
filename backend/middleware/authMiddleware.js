@@ -1,85 +1,82 @@
-const jwt = require("jsonwebtoken")
+const jwt   = require("jsonwebtoken")
+const Staff = require("../models/Staff")
 
-// ── LINE 1 ── Protect claimant routes
-const protectClaimant = (req, res, next) => {
-  try {
-
-    // ── LINE 2 ── Get token from Authorization header
-    const authHeader = req.headers.authorization
-
-    if(!authHeader || !authHeader.startsWith("Bearer ")){
-      return res.status(401).json({ message: "No token provided" })
-    }
-
-    // ── LINE 3 ── Extract the token (remove "Bearer " prefix)
-    const token = authHeader.split(" ")[1]
-
-    // ── LINE 4 ── Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-
-    // ── LINE 5 ── Attach claimant info to the request
-    req.claimant = decoded
-
-    // ── LINE 6 ── Continue to the next function
-    next()
-
-  } catch(err){
-    return res.status(401).json({ message: "Invalid or expired token" })
-  }
+// ── Pull the token out of the Authorization header
+function extractToken(req){
+  const authHeader = req.headers.authorization
+  if(!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) return null
+  return authHeader.split(" ")[1] || null
 }
 
-// ── LINE 7 ── Protect staff routes
-const protectStaff = (req, res, next) => {
+// ── Distinguish an expired session from a broken token
+function handleError(res, err){
+  if(err.name === "TokenExpiredError"){
+    return res.status(401).json({
+      message: "Session expired. Please log in again.",
+      code:    "TOKEN_EXPIRED"
+    })
+  }
+  return res.status(401).json({ message: "Invalid token", code: "TOKEN_INVALID" })
+}
+
+// ── Factory: builds both the staff and admin guards from one implementation
+const buildStaffGuard = (requireAdmin = false) => async (req, res, next) => {
   try {
-
-    const authHeader = req.headers.authorization
-
-    if(!authHeader || !authHeader.startsWith("Bearer ")){
+    const token = extractToken(req)
+    if(!token){
       return res.status(401).json({ message: "No token provided" })
     }
 
-    const token = authHeader.split(" ")[1]
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // ── LINE 8 ── Make sure this token belongs to a staff member
     if(decoded.type !== "staff"){
       return res.status(403).json({ message: "Access denied. Staff only." })
     }
 
-    req.staff = decoded
-    next()
+    // ── Live DB check — this is what makes deactivation actually work
+    const staff = await Staff.findById(decoded.id).select("-password")
 
-  } catch(err){
-    return res.status(401).json({ message: "Invalid or expired token" })
-  }
-}
-
-// ── LINE 9 ── Protect admin-only routes
-const protectAdmin = (req, res, next) => {
-  try {
-
-    const authHeader = req.headers.authorization
-
-    if(!authHeader || !authHeader.startsWith("Bearer ")){
-      return res.status(401).json({ message: "No token provided" })
+    if(!staff || staff.active === false){
+      return res.status(401).json({ message: "Account no longer active" })
     }
 
-    const token = authHeader.split(" ")[1]
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-
-    // ── LINE 10 ── Must be staff AND have admin role
-    if(decoded.type !== "staff" || decoded.role !== "admin"){
+    // ── Role read from the DB, not the token — demotions apply immediately
+    if(requireAdmin && staff.role !== "admin"){
       return res.status(403).json({ message: "Access denied. Admins only." })
     }
 
-    req.staff = decoded
+    req.staff = { id: staff._id, role: staff.role, fullName: staff.fullName }
     next()
 
   } catch(err){
-    return res.status(401).json({ message: "Invalid or expired token" })
+    return handleError(res, err)
   }
 }
 
-module.exports = { protectClaimant, protectStaff, protectAdmin }
+const protectClaimant = (req, res, next) => {
+  try {
+    const token = extractToken(req)
+    if(!token){
+      return res.status(401).json({ message: "No token provided" })
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
+    // ── Was missing before: a staff token used to pass as a claimant
+    if(decoded.type !== "claimant"){
+      return res.status(403).json({ message: "Access denied. Claimants only." })
+    }
+
+    req.claimant = decoded
+    next()
+
+  } catch(err){
+    return handleError(res, err)
+  }
+}
+
+module.exports = {
+  protectClaimant,
+  protectStaff: buildStaffGuard(false),
+  protectAdmin: buildStaffGuard(true)
+}
