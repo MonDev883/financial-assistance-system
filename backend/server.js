@@ -1,27 +1,39 @@
 // ── Load environment variables first
 require("dotenv").config()
 
+// ── Fail fast if critical config is missing (1.4)
+if(!process.env.JWT_SECRET){
+  console.error("❌ JWT_SECRET is not set")
+  process.exit(1)
+}
+if(!process.env.MONGO_URI){
+  console.error("❌ MONGO_URI is not set")
+  process.exit(1)
+}
+
 // ── Force DNS to use Google (fixes MongoDB Atlas SRV lookup)
 const dns = require("dns")
 dns.setServers(["8.8.8.8", "8.8.4.4"])
 
 // ── Import packages
-const express    = require("express")
-const mongoose   = require("mongoose")
-const cors       = require("cors")
-const path       = require("path")
-const helmet     = require("helmet")
-const rateLimit  = require("express-rate-limit")
+const express     = require("express")
+const mongoose    = require("mongoose")
+const cors        = require("cors")
+const path        = require("path")
+const helmet      = require("helmet")
+const rateLimit   = require("express-rate-limit")
 const compression = require("compression")
 
 // ── Create Express app
 const app = express()
 
-// ── Security headers
+// ── Trust Render's proxy so rate limiting sees real client IPs (1.3)
+app.set("trust proxy", 1)
+
 // ── Security headers
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" }   // (1.1)
 }))
 
 // ── Compression
@@ -37,7 +49,7 @@ app.use(cors({
 // ── Parse JSON
 app.use(express.json({ limit: "10mb" }))
 
-// ── Serve uploaded files (before rate limiter — images shouldn't count against the quota)
+// ── Serve uploaded files (above the limiter — images shouldn't burn quota) (1.2)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 
 // ── Global rate limiter (500 requests per 15 minutes)
@@ -55,8 +67,6 @@ const loginLimiter = rateLimit({
   message:  { message: "Too many login attempts. Please try again after 15 minutes." }
 })
 app.use("/api/staff/login", loginLimiter)
-
-
 
 // ── Routes
 app.use("/api/applications", require("./routes/applicationRoutes"))
