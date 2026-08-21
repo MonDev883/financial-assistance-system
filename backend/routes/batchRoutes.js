@@ -34,17 +34,23 @@ router.post("/create", protectStaff, async (req, res) => {
       notes
     } = req.body
 
-    if(!applicationWindow || !batchName || !payDate ||
+        if(!applicationWindow || !batchName || !payDate ||
        !startTime || !endTime){
       return res.status(400).json({ message: "All fields are required" })
     }
 
-    // ── Auto-number the batch
-    const count = await PayoutBatch.countDocuments({ applicationWindow })
+    if(startTime >= endTime){
+      return res.status(400).json({ message: "End time must be after start time" })
+    }
+
+     // ── Auto-number the batch (highest existing + 1, so deletions don't collide)
+    const last = await PayoutBatch.findOne({ applicationWindow })
+      .sort({ batchNumber: -1 })
+    const nextNumber = (last?.batchNumber || 0) + 1
 
     const batch = await PayoutBatch.create({
       applicationWindow,
-      batchNumber:  count + 1,
+      batchNumber:  nextNumber,
       batchName,
       payDate:      new Date(payDate),
       startTime,
@@ -170,22 +176,9 @@ router.put("/assign", protectStaff, async (req, res) => {
         application.payDate     = batch.payDate
         await application.save()
 
-        // ── Send SMS with batch details
-        if(application.contactNumber){
-          const smsMessage =
-            "City Hall Financial Assistance\n" +
-            "Ref No: " + application.referenceNumber + "\n" +
-            "PAYOUT SCHEDULE\n" +
-            "Batch: " + batch.batchName + "\n" +
-            "Date: " + new Date(batch.payDate).toLocaleDateString("en-PH") + "\n" +
-            "Time: " + batch.startTime + " - " + batch.endTime + "\n" +
-            "Please be on time. Bring valid ID." +
-            (batch.notes ? "\nNote: " + batch.notes : "")
+       
 
-          await sendSMS(application.contactNumber, smsMessage)
-        }
-
-        // ── Format times to 12-hour
+              // ── Format times to 12-hour
         const startFormatted = formatTime(batch.startTime)
         const endFormatted   = formatTime(batch.endTime)
 
@@ -201,20 +194,30 @@ router.put("/assign", protectStaff, async (req, res) => {
             "Please be on time. Bring valid ID." +
             (batch.notes ? "\nNote: " + batch.notes : "")
 
-          await sendSMS(application.contactNumber, smsMessage)
+          try {
+            await sendSMS(application.contactNumber, smsMessage)
+          } catch(e){
+            console.error("Batch SMS failed for " + application.referenceNumber + ":", e.message)
+          }
         }
 
         // ── Send email with batch details
-        await sendApprovalEmail(application.email, {
-          referenceNumber: application.referenceNumber,
-          name:            application.firstName + " " + application.lastName,
-          assistanceType:  application.assistanceType,
-          approvedAmount:  application.approvedAmount || application.amountAssigned,
-          payDate:         payDateFormatted,
-          timeSlot:        startFormatted + " – " + endFormatted,
-          batchName:       batch.batchName,
-          remarks:         batch.notes || ""
-        })
+        if(application.email){
+          try {
+            await sendApprovalEmail(application.email, {
+              referenceNumber: application.referenceNumber,
+              name:            application.firstName + " " + application.lastName,
+              assistanceType:  application.assistanceType,
+              approvedAmount:  application.approvedAmount || application.amountAssigned,
+              payDate:         payDateFormatted,
+              timeSlot:        startFormatted + " – " + endFormatted,
+              batchName:       batch.batchName,
+              remarks:         batch.notes || ""
+            })
+          } catch(e){
+            console.error("Batch email failed for " + application.referenceNumber + ":", e.message)
+          }
+        }
 
         results.success++
 

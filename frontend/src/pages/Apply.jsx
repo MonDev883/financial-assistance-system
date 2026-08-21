@@ -218,8 +218,9 @@ function ApplyForm(){
                     <label className={labelClass}>
                       Date of Birth <span className="text-red-500">*</span>
                     </label>
-                    <input className={inputClass} name="dateOfBirth"
+                      <input className={inputClass} name="dateOfBirth"
                       type="date"
+                      max={new Date(Date.now() - 86400000).toISOString().split("T")[0]}
                       value={form.dateOfBirth} onChange={handleChange} />
                   </div>
 

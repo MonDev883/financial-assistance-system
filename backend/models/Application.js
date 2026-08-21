@@ -89,9 +89,11 @@ const applicationSchema = new mongoose.Schema({
     required: true
   },
 
-  email: {
+    email: {
     type: String,
-    default: ""
+    default: "",
+    lowercase: true,
+    trim: true
   },
 
   // ── Assistance details ────────────────────
@@ -107,7 +109,7 @@ const applicationSchema = new mongoose.Schema({
     required: true
   },
 
-  // ── Auto-assigned amount ──────────────────
+  
 
   // ── Auto-assigned amount ──────────────
   amountAssigned: {
@@ -161,11 +163,19 @@ const applicationSchema = new mongoose.Schema({
     default: null
   },
 
-  reviewedAt: {
+   reviewedAt: {
     type: Date,
     default: null
+  },
+  paidAt: {
+    type: Date,
+    default: null
+  },
+  paidBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Staff",
+    default: null
   }
-
-})
+}, { timestamps: true })
 
 module.exports = mongoose.model("Application", applicationSchema)

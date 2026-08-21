@@ -2,6 +2,16 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import API from "../../api"
 
+// ── Convert 24-hour time to 12-hour AM/PM
+function formatTime(time24){
+  if(!time24) return "—"
+  const [hourStr, minute] = time24.split(":")
+  let hour = parseInt(hourStr)
+  const ampm = hour >= 12 ? "PM" : "AM"
+  hour = hour % 12 || 12
+  return hour + ":" + minute + " " + ampm
+}
+
 function BatchManager(){
 
   const { windowId }                  = useParams()
@@ -77,6 +87,11 @@ function BatchManager(){
 
     if(!form.batchName || !form.payDate || !form.startTime || !form.endTime){
       setMessage("❌ Batch name, date, and time are required")
+      return
+    }
+
+    if(form.startTime >= form.endTime){
+      setMessage("❌ End time must be after start time")
       return
     }
 
@@ -165,12 +180,11 @@ function BatchManager(){
       setSelected(unassigned.map(a => a._id))
     }
   }
-
   function formatDateTime(date, startTime, endTime){
     return new Date(date).toLocaleDateString("en-PH", {
       weekday: "short", year: "numeric",
       month: "short", day: "numeric"
-    }) + " | " + startTime + " – " + endTime
+    }) + " | " + formatTime(startTime) + " – " + formatTime(endTime)
   }
 
   const inputClass = "w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
@@ -367,7 +381,7 @@ function BatchManager(){
                           })}
                         </p>
                         <p className="text-sm text-gray-500">
-                          🕐 {batch.startTime} – {batch.endTime}
+                          🕐 {formatTime(batch.startTime)} – {formatTime(batch.endTime)}
                         </p>
                         {batch.barangay && (
                           <p className="text-sm text-blue-600 font-semibold mt-1">
@@ -568,7 +582,7 @@ function BatchManager(){
                     })}
                   </p>
                   <p className="text-red-200 text-sm">
-                    🕐 {viewBatch.startTime} – {viewBatch.endTime}
+                    🕐 {formatTime(viewBatch.startTime)} – {formatTime(viewBatch.endTime)}
                   </p>
                   {viewBatch.barangay && (
                     <p className="text-red-200 text-sm">📍 {viewBatch.barangay}</p>

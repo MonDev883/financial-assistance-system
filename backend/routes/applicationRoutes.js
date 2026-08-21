@@ -108,6 +108,22 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         return res.status(400).json({ message: "All required fields must be filled in" })
       }
 
+            // ── Date of birth must be a real date in the past
+      const dob = new Date(dateOfBirth)
+
+      if(isNaN(dob.getTime())){
+        cleanupUpload(req)
+        return res.status(400).json({ message: "Invalid date of birth" })
+      }
+
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      if(dob >= todayStart){
+        cleanupUpload(req)
+        return res.status(400).json({ message: "Date of birth must be in the past" })
+      }
+
     // ── LINE 4 ── Get auto-assigned amount from window
     const assignedAmount = window.amounts?.[assistanceType] || 0
 
@@ -267,8 +283,10 @@ router.put("/review/:id", protectStaff, async (req, res) => {
     application.reviewedAt = new Date()
     application.remarks    = remarks || ""
 
-    if(status === "approved"){
+           if(status === "approved"){
       application.approvedAmount = application.amountAssigned
+      // Approval email is sent by batchRoutes when a payout batch is assigned —
+      // payDate and time slot don't exist yet at this point.
     }
 
     if(status === "rejected"){
@@ -297,14 +315,24 @@ router.put("/review/:id", protectStaff, async (req, res) => {
             "Status: REJECTED\n" +
             "Reason: " + (rejectionReason || "See City Hall for details")
 
-          await sendRejectionEmail(application.email, {
-            referenceNumber: application.referenceNumber,
-            name:            application.firstName + " " + application.lastName,
-            rejectionReason
-          })
+                    if(application.email){
+            try {
+              await sendRejectionEmail(application.email, {
+                referenceNumber: application.referenceNumber,
+                name:            application.firstName + " " + application.lastName,
+                rejectionReason
+              })
+            } catch(e){
+              console.error("Rejection email failed:", e.message)
+            }
+          }
         }
 
-        await sendSMS(application.contactNumber, smsMessage)
+        try {
+          await sendSMS(application.contactNumber, smsMessage)
+        } catch(e){
+          console.error("SMS failed:", e.message)
+        }
       }
 
     res.json({ message: `Application ${status} successfully` })
@@ -332,21 +360,33 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
       })
     }
 
-    application.status = "paid"
+       application.status = "paid"
+    application.paidAt = new Date()
+    application.paidBy = req.staff.id
     await application.save()
 
     if(application.contactNumber){
-      await sendSMS(application.contactNumber,
-        "City Hall Financial Assistance\n" +
-        "Ref No: " + application.referenceNumber + "\n" +
-        "Status: PAID\n" +
-        "Your financial assistance has been released. Thank you."
-      )
+      try {
+        await sendSMS(application.contactNumber,
+          "City Hall Financial Assistance\n" +
+          "Ref No: " + application.referenceNumber + "\n" +
+          "Status: PAID\n" +
+          "Your financial assistance has been released. Thank you."
+        )
+      } catch(e){
+        console.error("Paid SMS failed:", e.message)
+      }
+    }
 
-      await sendPaidEmail(application.email, {
-        referenceNumber: application.referenceNumber,
-        name:            application.firstName + " " + application.lastName
-      })
+    if(application.email){
+      try {
+        await sendPaidEmail(application.email, {
+          referenceNumber: application.referenceNumber,
+          name:            application.firstName + " " + application.lastName
+        })
+      } catch(e){
+        console.error("Paid email failed:", e.message)
+      }
     }
 
     res.json({ message: "Marked as paid successfully" })

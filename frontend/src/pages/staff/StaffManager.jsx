@@ -58,8 +58,8 @@ function StaffManager(){
       return
     }
 
-    if(form.password.length < 6){
-      setMessage("❌ Password must be at least 6 characters")
+    if(form.password.length < 8){
+      setMessage("❌ Password must be at least 8 characters")
       return
     }
 
@@ -167,7 +167,7 @@ function StaffManager(){
                   className={inputClass}
                   name="password"
                   type="password"
-                  placeholder="Minimum 6 characters"
+                  placeholder="Minimum 8 characters"
                   value={form.password}
                   onChange={handleChange}
                 />
