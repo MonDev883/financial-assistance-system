@@ -49,6 +49,16 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 })
 
+// ── Delete an uploaded file when a submission is rejected
+function cleanupUpload(req){
+  if(req.file && fs.existsSync(req.file.path)){
+    try { fs.unlinkSync(req.file.path) } catch(e){ /* already gone */ }
+  }
+}
+
+// ── Escape user input before putting it in a RegExp
+const escapeRegex = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
 // ========================
 // SUBMIT APPLICATION (PUBLIC)
 // ========================
@@ -103,8 +113,8 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
 // ── LINE 4b ── Check for duplicate submission
       const duplicate = await Application.findOne({
         applicationWindow: window._id,
-        firstName:   { $regex: new RegExp(`^${firstName}$`, "i") },
-        lastName:    { $regex: new RegExp(`^${lastName}$`, "i") },
+        firstName:   { $regex: new RegExp("^" + escapeRegex(firstName) + "$", "i") },
+        lastName:    { $regex: new RegExp("^" + escapeRegex(lastName) + "$", "i") },
         dateOfBirth: dateOfBirth
       })
 
@@ -114,11 +124,8 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         })
       }
 
-    // ── LINE 5 ── Generate reference number
-    const count  = await Application.countDocuments()
-    const refNum = "FA-" + new Date().getFullYear() + "-" +
-      String(count + 1).padStart(5, "0")
-
+ const refNum = "FA-" + new Date().getFullYear() + "-" +
+  Date.now().toString(36).toUpperCase().slice(-5)
 
 
     // ── LINE 6 ── Create application
@@ -157,13 +164,23 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         "Status: PENDING\n" +
         "You will be notified of updates."
 
-      await sendSMS(contactNumber, smsMessage)
+      try {
+  await sendSMS(contactNumber, smsMessage)
+} catch(e){
+  console.error("SMS failed for " + refNum + ":", e.message)
+}
 
-      await sendSubmissionEmail(email, {
-        referenceNumber: refNum,
-        name:            firstName + " " + lastName,
-        assistanceType
-      })
+if(email){
+  try {
+    await sendSubmissionEmail(email, {
+      referenceNumber: refNum,
+      name:            firstName + " " + lastName,
+      assistanceType
+    })
+  } catch(e){
+    console.error("Email failed for " + refNum + ":", e.message)
+  }
+}
 
     res.status(201).json({
       message:         "Application submitted successfully",
