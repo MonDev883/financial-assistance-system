@@ -124,6 +124,14 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         return res.status(400).json({ message: "Date of birth must be in the past" })
       }
 
+      const ageMs  = Date.now() - dob.getTime()
+      const ageYrs = Math.floor(ageMs / 31557600000)
+
+      if(ageYrs < 18){
+        cleanupUpload(req)
+        return res.status(400).json({ message: "Applicant must be at least 18 years old" })
+      }
+
     // ── LINE 4 ── Get auto-assigned amount from window
     const assignedAmount = window.amounts?.[assistanceType] || 0
 

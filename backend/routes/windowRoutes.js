@@ -1,6 +1,8 @@
-const express = require("express")
-const router  = express.Router()
+const express  = require("express")
+const router   = express.Router()
+const mongoose = require("mongoose")
 const ApplicationWindow = require("../models/ApplicationWindow")
+const Application       = require("../models/Application")
 const { protectStaff, protectAdmin } = require("../middleware/authMiddleware")
 
 // ========================
@@ -46,6 +48,13 @@ router.get("/current", async (req, res) => {
 // ========================
 router.get("/public/:id", async (req, res) => {
   try {
+    if(!mongoose.Types.ObjectId.isValid(req.params.id)){
+      return res.status(404).json({
+        isOpen:  false,
+        message: "Application window not found."
+      })
+    }
+
     const window = await ApplicationWindow.findById(req.params.id)
 
     if(!window){
@@ -114,9 +123,23 @@ router.post("/create", protectAdmin, async (req, res) => {
       })
     }
 
-    if(new Date(startDate) >= new Date(endDate)){
+        if(new Date(startDate) >= new Date(endDate)){
       return res.status(400).json({
         message: "End date must be after start date"
+      })
+    }
+
+    // ── Only one active window may cover any given moment
+    const overlapping = await ApplicationWindow.findOne({
+      isActive:  true,
+      startDate: { $lte: new Date(endDate) },
+      endDate:   { $gte: new Date(startDate) }
+    })
+
+    if(overlapping){
+      return res.status(400).json({
+        message: "This overlaps with an active window: \"" + overlapping.title +
+          "\". Close it first, or choose different dates."
       })
     }
 
@@ -152,31 +175,71 @@ router.post("/create", protectAdmin, async (req, res) => {
 // ========================
 router.put("/update/:id", protectAdmin, async (req, res) => {
   try {
+    if(!mongoose.Types.ObjectId.isValid(req.params.id)){
+      return res.status(404).json({ message: "Window not found" })
+    }
+
     const {
       title,
       description,
       startDate,
       endDate,
-      maxAmount,
+      amounts,
       isActive
     } = req.body
 
-    const window = await ApplicationWindow.findByIdAndUpdate(
-      req.params.id,
-      {
-        title,
-        description,
-        startDate:  new Date(startDate),
-        endDate:    new Date(endDate),
-        maxAmount:  Number(maxAmount) || 0,
-        isActive
-      },
-      { new: true }
-    )
+    const existing = await ApplicationWindow.findById(req.params.id)
 
-    if(!window){
+    if(!existing){
       return res.status(404).json({ message: "Window not found" })
     }
+
+    // ── Build updates from only the fields actually sent
+    const updates = {}
+
+    if(title       !== undefined) updates.title       = title
+    if(description !== undefined) updates.description = description
+    if(isActive    !== undefined) updates.isActive    = isActive
+
+    if(startDate){
+      const d = new Date(startDate)
+      if(isNaN(d.getTime())){
+        return res.status(400).json({ message: "Invalid start date" })
+      }
+      updates.startDate = d
+    }
+
+    if(endDate){
+      const d = new Date(endDate)
+      if(isNaN(d.getTime())){
+        return res.status(400).json({ message: "Invalid end date" })
+      }
+      updates.endDate = d
+    }
+
+    // ── Compare against existing values for whichever date wasn't sent
+    const finalStart = updates.startDate || existing.startDate
+    const finalEnd   = updates.endDate   || existing.endDate
+
+    if(finalStart >= finalEnd){
+      return res.status(400).json({ message: "End date must be after start date" })
+    }
+
+    if(amounts){
+      updates.amounts = {
+        Medical:     Number(amounts.Medical)     || 0,
+        Burial:      Number(amounts.Burial)      || 0,
+        Educational: Number(amounts.Educational) || 0,
+        Calamity:    Number(amounts.Calamity)    || 0,
+        Other:       Number(amounts.Other)       || 0
+      }
+    }
+
+    const window = await ApplicationWindow.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    )
 
     res.json({ message: "Window updated", window })
 
@@ -197,11 +260,22 @@ router.put("/close/:id", protectAdmin, async (req, res) => {
       { new: true }
     )
 
-    if(!window){
+       if(!window){
       return res.status(404).json({ message: "Window not found" })
     }
 
-    res.json({ message: "Window closed successfully" })
+    const pendingCount = await Application.countDocuments({
+      applicationWindow: req.params.id,
+      status:            "pending"
+    })
+
+    res.json({
+      message: "Window closed successfully" +
+        (pendingCount > 0
+          ? " — warning: " + pendingCount + " application(s) still awaiting review"
+          : ""),
+      pendingCount
+    })
 
   } catch(err){
     res.status(500).json({ message: "Failed to close window" })
@@ -213,7 +287,9 @@ router.put("/close/:id", protectAdmin, async (req, res) => {
 // ========================
 router.get("/stats/:id", protectStaff, async (req, res) => {
   try {
-    const Application = require("../models/Application")
+    if(!mongoose.Types.ObjectId.isValid(req.params.id)){
+      return res.status(400).json({ message: "Invalid window ID" })
+    }
 
     const total    = await Application.countDocuments({ applicationWindow: req.params.id })
     const pending  = await Application.countDocuments({ applicationWindow: req.params.id, status: "pending" })
@@ -222,7 +298,10 @@ router.get("/stats/:id", protectStaff, async (req, res) => {
     const paid     = await Application.countDocuments({ applicationWindow: req.params.id, status: "paid" })
 
     const totalAmount = await Application.aggregate([
-      { $match: { applicationWindow: require("mongoose").Types.ObjectId.createFromHexString(req.params.id), status: { $in: ["approved", "paid"] } } },
+          { $match: {
+          applicationWindow: mongoose.Types.ObjectId.createFromHexString(req.params.id),
+          status: { $in: ["approved", "paid"] }
+      }},
       { $group: { _id: null, total: { $sum: "$approvedAmount" } } }
     ])
 

@@ -225,6 +225,16 @@ function StaffDashboard(){
     })
   }
 
+  function getAge(dob){
+    if(!dob) return "—"
+    const birth = new Date(dob)
+    const today = new Date()
+    let age = today.getFullYear() - birth.getFullYear()
+    const m = today.getMonth() - birth.getMonth()
+    if(m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+    return age
+  }
+
   function getFullName(app){
     return app.lastName + ", " + app.firstName +
       (app.middleName ? " " + app.middleName : "")
@@ -466,12 +476,13 @@ function StaffDashboard(){
                         </p>
                         <div className="space-y-2 text-sm">
                           <div>
-                            <p className="text-gray-400 text-xs">Full Name</p>
-                            <p className="font-semibold">{getFullName(app)}</p>
-                          </div>
-                          <div>
                             <p className="text-gray-400 text-xs">Date of Birth</p>
-                            <p className="font-semibold">{app.dateOfBirth}</p>
+                            <p className="font-semibold">
+                              {formatDate(app.dateOfBirth)}
+                              <span className="text-gray-400 font-normal ml-2">
+                                ({getAge(app.dateOfBirth)} yrs)
+                              </span>
+                            </p>
                           </div>
                           <div>
                             <p className="text-gray-400 text-xs">Gender</p>
@@ -516,16 +527,12 @@ function StaffDashboard(){
                         </p>
                         <div className="space-y-2 text-sm">
                           <div>
-                            <p className="text-gray-400 text-xs">Type</p>
-                            <p className="font-semibold">{app.assistanceType}</p>
-                          </div>
-                          <div>
                             <p className="text-gray-400 text-xs">Amount Assigned</p>
                             <p className="font-bold text-green-600 text-base">
                               ₱{Number(app.amountAssigned || 0).toLocaleString()}
                             </p>
                           </div>
-                          {app.approvedAmount > 0 && (
+                            {app.approvedAmount > 0 && app.approvedAmount !== app.amountAssigned && (
                             <div>
                               <p className="text-gray-400 text-xs">Approved Amount</p>
                               <p className="font-bold text-green-700 text-base">
@@ -563,14 +570,9 @@ function StaffDashboard(){
                             onError={e => { e.target.onerror = null; e.target.src = "/placeholder-avatar.png" }}
                             className="w-24 h-24 object-cover rounded-full border-4 border-gray-200"
                           />
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">
-                              {app.lastName}, {app.firstName}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Selfie taken during application submission
-                            </p>
-                          </div>
+                          <p className="text-xs text-gray-400">
+                            Captured at submission
+                          </p>
                         </div>
                       </div>
                     )}
