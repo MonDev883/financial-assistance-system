@@ -64,10 +64,7 @@ router.get("/public/:id", async (req, res) => {
       })
     }
 
-    const now = new Date()
-    const isOpen = window.isActive &&
-      now >= new Date(window.startDate) &&
-      now <= new Date(window.endDate)
+    const isOpen = window.isOpen()
 
     res.json({
       isOpen,

@@ -9,25 +9,22 @@ const applicationWindowSchema = new mongoose.Schema({
   description: { type: String, default: "" },
 
   // ── Amount per assistance type ────────
-  amounts: {
-    Medical:     { type: Number, default: 0 },
-    Burial:      { type: Number, default: 0 },
-    Educational: { type: Number, default: 0 },
-    Calamity:    { type: Number, default: 0 },
-    Other:       { type: Number, default: 0 }
+   amounts: {
+    Medical:     { type: Number, default: 0, min: 0 },
+    Burial:      { type: Number, default: 0, min: 0 },
+    Educational: { type: Number, default: 0, min: 0 },
+    Calamity:    { type: Number, default: 0, min: 0 },
+    Other:       { type: Number, default: 0, min: 0 }
   },
 
   isActive: { type: Boolean, default: true },
 
-  createdBy: {
+   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Staff"
-  },
-
-  createdAt: { type: Date, default: Date.now }
-
-})
-
+  }
+}, { timestamps: true })
+ 
 applicationWindowSchema.methods.isOpen = function(){
   const now = new Date()
   return this.isActive &&

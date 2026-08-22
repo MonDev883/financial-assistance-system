@@ -74,8 +74,10 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
     }
 
     // ── LINE 2 ── Check if window is currently open
+        // ── LINE 2 ── Check if window is currently open
     const now = new Date()
-        if(!window.isActive || now < window.startDate || now > window.endDate){
+
+    if(!window.isOpen()){
       cleanupUpload(req)
       return res.status(400).json({
         message: "This application window is no longer accepting submissions."
