@@ -9,6 +9,17 @@ const transporter = nodemailer.createTransport({
   }
 })
 
+// ── Warn once at startup if credentials are missing
+if(!process.env.GMAIL_USER || !process.env.GMAIL_PASS){
+  console.error("❌ GMAIL_USER / GMAIL_PASS not set — emails will fail")
+}
+
+// ── Escape user-supplied text before putting it in HTML
+function esc(s){
+  return String(s || "").replace(/[<>&"]/g, c =>
+    ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]))
+}
+
 // ========================
 // BASE TEMPLATE
 // ========================
@@ -89,7 +100,7 @@ async function sendSubmissionEmail(email, data){
       </div>
 
       <p style="color:#374151; font-size:15px; line-height:1.6; margin-bottom:24px;">
-        Dear <strong>${data.name}</strong>,<br><br>
+        Dear <strong>${esc(data.name)}</strong>,<br><br>
         Your financial assistance application has been successfully submitted to City Hall.
         Please keep your reference number safe — you will need it to track your application status.
       </p>
@@ -166,7 +177,7 @@ async function sendApprovalEmail(email, data){
       </div>
 
       <p style="color:#374151; font-size:15px; line-height:1.6; margin-bottom:24px;">
-        Dear <strong>${data.name}</strong>,<br><br>
+        Dear <strong>${esc(data.name)}</strong>,<br><br>
         We are pleased to inform you that your financial assistance application
         has been <strong style="color:#16A34A;">APPROVED</strong> by City Hall.
       </p>
@@ -180,7 +191,9 @@ async function sendApprovalEmail(email, data){
           ₱${Number(data.approvedAmount).toLocaleString()}
         </p>
         <p style="margin:8px 0 0; color:#ffffff; font-size:13px; font-weight:600;">
-          📅 Claim on: <strong>${data.payDate}</strong>
+          ${data.payDate
+            ? `📅 Claim on: <strong>${esc(data.payDate)}</strong>`
+            : "Payout schedule to follow"}
         </p>
       </div>
 
@@ -193,7 +206,7 @@ async function sendApprovalEmail(email, data){
           ${infoRow("Reference Number", data.referenceNumber)}
           ${infoRow("Assistance Type", data.assistanceType)}
           ${infoRow("Approved Amount", "₱" + Number(data.approvedAmount).toLocaleString(), "#16A34A")}
-          ${infoRow("Pay Date", "📅 " + data.payDate, "#2563EB")}
+          ${data.payDate ? infoRow("Pay Date", "📅 " + esc(data.payDate), "#2563EB") : ""}
           ${infoRow("Status", "✅ APPROVED", "#16A34A")}
         </table>
       </div>
@@ -204,9 +217,9 @@ async function sendApprovalEmail(email, data){
           ⚠️ Important Instructions:
         </p>
         <ul style="color: #854D0E; font-size: 14px; margin: 10px 0 0; padding-left: 20px;">
-          <li>Visit City Hall on <strong>${data.payDate}</strong></li>
-          ${data.timeSlot ? `<li>Your time slot: <strong>${data.timeSlot}</strong></li>` : ""}
-          ${data.batchName ? `<li>Your batch: <strong>${data.batchName}</strong></li>` : ""}
+          ${data.payDate ? `<li>Visit City Hall on <strong>${esc(data.payDate)}</strong></li>` : ""}
+          ${data.timeSlot ? `<li>Your time slot: <strong>${esc(data.timeSlot)}</strong></li>` : ""}
+          ${data.batchName ? `<li>Your batch: <strong>${esc(data.batchName)}</strong></li>` : ""}
           <li>Bring a valid government-issued ID</li>
           <li>Present your reference number: <strong>${data.referenceNumber}</strong></li>
           <li>Please arrive on time — late arrivals may be rescheduled</li>
@@ -262,7 +275,7 @@ async function sendRejectionEmail(email, data){
       </div>
 
       <p style="color:#374151; font-size:15px; line-height:1.6; margin-bottom:24px;">
-        Dear <strong>${data.name}</strong>,<br><br>
+        Dear <strong>${esc(data.name)}</strong>,<br><br>
         We regret to inform you that your financial assistance application
         was <strong style="color:#DC2626;">NOT APPROVED</strong> at this time.
       </p>
@@ -330,7 +343,7 @@ async function sendPaidEmail(email, data){
       </div>
 
       <p style="color:#374151; font-size:15px; line-height:1.6; margin-bottom:24px;">
-        Dear <strong>${data.name}</strong>,<br><br>
+        Dear <strong>${esc(data.name)}</strong>,<br><br>
         Your financial assistance has been <strong style="color:#1D4ED8;">successfully released</strong>.
         Thank you for availing the City Hall Financial Assistance Program.
       </p>

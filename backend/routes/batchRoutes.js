@@ -201,9 +201,8 @@ router.put("/assign", protectStaff, async (req, res) => {
         }
 
         // ── Send email with batch details
-        if(application.email){
-          try {
-            await sendApprovalEmail(application.email, {
+               {
+          const emailOk = await sendApprovalEmail(application.email, {
               referenceNumber: application.referenceNumber,
               name:            application.firstName + " " + application.lastName,
               assistanceType:  application.assistanceType,
@@ -212,9 +211,9 @@ router.put("/assign", protectStaff, async (req, res) => {
               timeSlot:        startFormatted + " – " + endFormatted,
               batchName:       batch.batchName,
               remarks:         batch.notes || ""
-            })
-          } catch(e){
-            console.error("Batch email failed for " + application.referenceNumber + ":", e.message)
+              })
+          if(application.email && !emailOk){
+            console.warn("⚠️ Batch email not delivered for " + application.referenceNumber)
           }
         }
 

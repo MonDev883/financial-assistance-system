@@ -197,16 +197,13 @@ if(!smsOk){
   console.warn("⚠️ SMS not delivered for " + refNum)
 }
 
-if(email){
-  try {
-    await sendSubmissionEmail(email, {
-      referenceNumber: refNum,
-      name:            firstName + " " + lastName,
-      assistanceType
-    })
-  } catch(e){
-    console.error("Email failed for " + refNum + ":", e.message)
-  }
+const emailOk = await sendSubmissionEmail(email, {
+  referenceNumber: refNum,
+  name:            firstName + " " + lastName,
+  assistanceType
+})
+if(!emailOk && email){
+  console.warn("⚠️ Submission email not delivered for " + refNum)
 }
 
     res.status(201).json({
@@ -323,16 +320,13 @@ router.put("/review/:id", protectStaff, async (req, res) => {
             "Status: REJECTED\n" +
             "Reason: " + (rejectionReason || "See City Hall for details")
 
-                    if(application.email){
-            try {
-              await sendRejectionEmail(application.email, {
-                referenceNumber: application.referenceNumber,
-                name:            application.firstName + " " + application.lastName,
-                rejectionReason
-              })
-            } catch(e){
-              console.error("Rejection email failed:", e.message)
-            }
+            const emailOk = await sendRejectionEmail(application.email, {
+            referenceNumber: application.referenceNumber,
+            name:            application.firstName + " " + application.lastName,
+            rejectionReason
+          })
+          if(application.email && !emailOk){
+            console.warn("⚠️ Rejection email not delivered for " + application.referenceNumber)
           }
         }
 
@@ -386,15 +380,12 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
       }
     }
 
-    if(application.email){
-      try {
-        await sendPaidEmail(application.email, {
-          referenceNumber: application.referenceNumber,
-          name:            application.firstName + " " + application.lastName
-        })
-      } catch(e){
-        console.error("Paid email failed:", e.message)
-      }
+      const paidEmailOk = await sendPaidEmail(application.email, {
+      referenceNumber: application.referenceNumber,
+      name:            application.firstName + " " + application.lastName
+    })
+    if(application.email && !paidEmailOk){
+      console.warn("⚠️ Paid email not delivered for " + application.referenceNumber)
     }
 
     res.json({ message: "Marked as paid successfully" })
