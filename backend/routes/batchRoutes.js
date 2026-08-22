@@ -194,10 +194,9 @@ router.put("/assign", protectStaff, async (req, res) => {
             "Please be on time. Bring valid ID." +
             (batch.notes ? "\nNote: " + batch.notes : "")
 
-          try {
-            await sendSMS(application.contactNumber, smsMessage)
-          } catch(e){
-            console.error("Batch SMS failed for " + application.referenceNumber + ":", e.message)
+          const smsOk = await sendSMS(application.contactNumber, smsMessage)
+          if(!smsOk){
+            console.warn("⚠️ Batch SMS not delivered for " + application.referenceNumber)
           }
         }
 

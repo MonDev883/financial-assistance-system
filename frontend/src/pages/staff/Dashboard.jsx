@@ -16,11 +16,7 @@ function StaffDashboard(){
   const [searchInput, setSearchInput]   = useState("")
   const [selected, setSelected]         = useState([])
   const [showBulk, setShowBulk]         = useState(false)
-  const [bulkForm, setBulkForm]         = useState({
-    approvedAmount: "",
-    payDate:        "",
-    remarks:        ""
-  })
+  const [bulkForm, setBulkForm]         = useState({ remarks: "" })
   const [bulkLoading, setBulkLoading]   = useState(false)
   const [bulkMessage, setBulkMessage]   = useState("")
   const [reviewing, setReviewing]       = useState(null)
@@ -156,21 +152,15 @@ function StaffDashboard(){
 
   async function handleBulkApprove(){
     setBulkMessage("")
-    if(!bulkForm.approvedAmount || !bulkForm.payDate){
-      setBulkMessage("❌ Amount and pay date are required")
-      return
-    }
     setBulkLoading(true)
     try {
       const res = await API.put("/applications/bulk-approve", {
         applicationIds: selected,
-        approvedAmount: bulkForm.approvedAmount,
-        payDate:        bulkForm.payDate,
         remarks:        bulkForm.remarks
       })
       setBulkMessage("✅ " + res.data.message)
       setSelected([])
-      setBulkForm({ approvedAmount: "", payDate: "", remarks: "" })
+      setBulkForm({ remarks: "" })
       setTimeout(() => {
         setShowBulk(false)
         setBulkMessage("")
@@ -733,31 +723,13 @@ function StaffDashboard(){
             <p className="text-sm text-gray-500 mb-6">
               Approving{" "}
               <span className="font-bold text-red-600">{selected.length}</span>{" "}
-              selected applications with the same pay date and amount.
+              selected applications.
             </p>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Approved Amount (₱) per applicant
-                </label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-green-400"
-                  type="number"
-                  placeholder="e.g. 5000"
-                  value={bulkForm.approvedAmount}
-                  onChange={e => setBulkForm({ ...bulkForm, approvedAmount: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Pay Date</label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-green-400"
-                  type="date"
-                  value={bulkForm.payDate}
-                  onChange={e => setBulkForm({ ...bulkForm, payDate: e.target.value })}
-                />
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
+                Each applicant receives the amount set for their assistance type.
+                Pay date and time slot are assigned later in Batch Manager.
               </div>
 
               <div>
@@ -774,7 +746,8 @@ function StaffDashboard(){
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-700">
                 ⚠️ This will approve all {selected.length} selected applications and
-                send SMS + email notifications to each applicant.
+                send an SMS to each applicant. The email with payout details follows
+                once you assign them to a batch.
               </div>
             </div>
 

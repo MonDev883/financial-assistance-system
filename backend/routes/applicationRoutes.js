@@ -187,16 +187,14 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
       const smsMessage =
         "City Hall Financial Assistance\n" +
         "Application received.\n" +
-        "Name: " + firstName + " " + lastName + "\n" +
-        "Reference No: " + refNum + "\n" +
+        "Ref No: " + refNum + "\n" +
         "Type: " + assistanceType + "\n" +
         "Status: PENDING\n" +
         "You will be notified of updates."
 
-      try {
-  await sendSMS(contactNumber, smsMessage)
-} catch(e){
-  console.error("SMS failed for " + refNum + ":", e.message)
+  const smsOk = await sendSMS(contactNumber, smsMessage)
+if(!smsOk){
+  console.warn("⚠️ SMS not delivered for " + refNum)
 }
 
 if(email){
@@ -338,10 +336,9 @@ router.put("/review/:id", protectStaff, async (req, res) => {
           }
         }
 
-        try {
-          await sendSMS(application.contactNumber, smsMessage)
-        } catch(e){
-          console.error("SMS failed:", e.message)
+        const smsOk = await sendSMS(application.contactNumber, smsMessage)
+        if(!smsOk){
+          console.warn("⚠️ SMS not delivered for " + application.referenceNumber)
         }
       }
 
@@ -376,15 +373,16 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
     await application.save()
 
     if(application.contactNumber){
-      try {
-        await sendSMS(application.contactNumber,
+            {
+        const smsOk = await sendSMS(application.contactNumber,
           "City Hall Financial Assistance\n" +
           "Ref No: " + application.referenceNumber + "\n" +
           "Status: PAID\n" +
           "Your financial assistance has been released. Thank you."
         )
-      } catch(e){
-        console.error("Paid SMS failed:", e.message)
+        if(!smsOk){
+          console.warn("⚠️ Paid SMS not delivered for " + application.referenceNumber)
+        }
       }
     }
 
@@ -705,18 +703,10 @@ router.get("/analytics/:windowId", protectStaff, async (req, res) => {
 // ========================
 router.put("/bulk-approve", protectStaff, async (req, res) => {
   try {
-    const { applicationIds, approvedAmount, payDate, remarks } = req.body
+    const { applicationIds, remarks } = req.body
 
     if(!applicationIds || applicationIds.length === 0){
       return res.status(400).json({ message: "No applications selected" })
-    }
-
-    if(!payDate){
-      return res.status(400).json({ message: "Pay date is required" })
-    }
-
-    if(!approvedAmount || Number(approvedAmount) <= 0){
-      return res.status(400).json({ message: "Approved amount is required" })
     }
 
     const results = { success: 0, failed: 0, errors: [] }
@@ -738,38 +728,26 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
         }
 
         application.status         = "approved"
-        application.approvedAmount = Number(approvedAmount)
-        application.payDate        = new Date(payDate)
+        application.approvedAmount = application.amountAssigned
         application.remarks        = remarks || ""
         application.reviewedBy     = req.staff.id
         application.reviewedAt     = new Date()
         await application.save()
 
-        // ── Send notifications
-        const payDateFormatted = new Date(payDate).toLocaleDateString("en-PH", {
-          weekday: "long", year: "numeric",
-          month: "long", day: "numeric"
-        })
-
+        // ── SMS only. The approval email is sent by batchRoutes once a
+        //    payout batch is assigned, when the date and time slot exist.
         if(application.contactNumber){
-          await sendSMS(application.contactNumber,
+          const smsOk = await sendSMS(application.contactNumber,
             "City Hall Financial Assistance\n" +
             "Ref No: " + application.referenceNumber + "\n" +
             "Status: APPROVED\n" +
-            "Amount: PHP " + Number(approvedAmount).toLocaleString() + "\n" +
-            "Pay Date: " + new Date(payDate).toLocaleDateString("en-PH") + "\n" +
-            "Please visit City Hall on your pay date with valid ID."
+            "Amount: PHP " + Number(application.amountAssigned).toLocaleString() + "\n" +
+            "Payout schedule to follow."
           )
+          if(!smsOk){
+            console.warn("⚠️ SMS not delivered for " + application.referenceNumber)
+          }
         }
-
-        await sendApprovalEmail(application.email, {
-          referenceNumber: application.referenceNumber,
-          name:            application.firstName + " " + application.lastName,
-          assistanceType:  application.assistanceType,
-          approvedAmount,
-          payDate:         payDateFormatted,
-          remarks:         remarks || ""
-        })
 
         results.success++
 
