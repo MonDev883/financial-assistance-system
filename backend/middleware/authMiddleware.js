@@ -53,30 +53,7 @@ const buildStaffGuard = (requireAdmin = false) => async (req, res, next) => {
   }
 }
 
-const protectClaimant = (req, res, next) => {
-  try {
-    const token = extractToken(req)
-    if(!token){
-      return res.status(401).json({ message: "No token provided" })
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-
-    // ── Was missing before: a staff token used to pass as a claimant
-    if(decoded.type !== "claimant"){
-      return res.status(403).json({ message: "Access denied. Claimants only." })
-    }
-
-    req.claimant = decoded
-    next()
-
-  } catch(err){
-    return handleError(res, err)
-  }
-}
-
 module.exports = {
-  protectClaimant,
   protectStaff: buildStaffGuard(false),
   protectAdmin: buildStaffGuard(true)
 }

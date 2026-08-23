@@ -11,26 +11,23 @@ const {
   sendPaidEmail
 } = require("../services/emailService")
 
-const multer  = require("multer")
-const path    = require("path")
-const fs      = require("fs")
+const multer     = require("multer")
+const cloudinary = require("cloudinary").v2
+const { CloudinaryStorage } = require("multer-storage-cloudinary")
 
-// ── Absolute upload directory (backend/uploads)
-const uploadDir = path.join(__dirname, "..", "uploads")
+// ── Cloudinary config — Render's disk is ephemeral, so local files don't survive
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key:    process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET
+})
 
-if(!fs.existsSync(uploadDir)){
-  fs.mkdirSync(uploadDir, { recursive: true })
-}
-
-// ── Multer setup for selfie upload
-const storage = multer.diskStorage({
-    destination: function(req, file, cb){
-    cb(null, uploadDir)
-  },
-  filename: function(req, file, cb){
-    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9)
-    const ext = path.extname(file.originalname)
-    cb(null, "selfie-" + uniqueName + ext)
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder:          "financial-assistance/selfies",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation:  [{ width: 800, height: 800, crop: "limit", quality: "auto" }]
   }
 })
 
@@ -49,11 +46,13 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 })
 
-// ── Delete an uploaded file when a submission is rejected
+// ── Delete the uploaded image when a submission is rejected.
+// Fire-and-forget — the caller returns immediately, so failures are logged only.
 function cleanupUpload(req){
-  if(req.file && fs.existsSync(req.file.path)){
-    try { fs.unlinkSync(req.file.path) } catch(e){ /* already gone */ }
-  }
+  if(!req.file || !req.file.filename) return
+
+  cloudinary.uploader.destroy(req.file.filename)
+    .catch(e => console.error("Cloudinary cleanup failed:", e.message))
 }
 
 // ── Escape user input before putting it in a RegExp
@@ -221,7 +220,7 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
       contactNumber:     normalizePhone(contactNumber),
       email:             email || "",
       assistanceType,
-      selfiePhotoPath:   req.file.filename,
+      selfiePhotoPath:   req.file.path,
       amountAssigned:    assignedAmount,
       status:            "pending",
       submittedAt:       now

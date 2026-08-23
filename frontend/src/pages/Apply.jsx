@@ -103,8 +103,9 @@ function ApplyForm(){
 
       const res = await API.post(`/applications/submit/${windowId}`, formData)
 
-      // ── Redirect to success page with result
-      navigate("/success", {
+      // ── Reference goes in the URL so a refresh or bookmark still works;
+      //    state carries the rest to avoid an extra API call on arrival.
+      navigate("/success?ref=" + encodeURIComponent(res.data.referenceNumber), {
         state: {
           referenceNumber: res.data.referenceNumber,
           name:            res.data.name,

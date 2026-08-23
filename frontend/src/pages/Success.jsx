@@ -1,23 +1,50 @@
-import { useLocation, Link } from "react-router-dom"
+import { useLocation, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { QRCodeSVG } from "qrcode.react"
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
+import API from "../api"
 
 function SuccessPage(){
 
-  const location = useLocation()
-  const data     = location.state
-  const qrRef    = useRef()
+  const location         = useLocation()
+  const navigate         = useNavigate()
+  const [searchParams]   = useSearchParams()
+  const qrRef            = useRef()
 
-  if(!data){
+  const [data, setData]       = useState(location.state || null)
+  const [loading, setLoading] = useState(false)
+
+  // ── On refresh or bookmark there's no router state, so refetch by the ref in the URL
+  useEffect(() => {
+    if(data?.referenceNumber) return
+
+    const ref = searchParams.get("ref")
+
+    if(!ref){
+      navigate("/check-status")
+      return
+    }
+
+    setLoading(true)
+    API.get("/applications/status/" + ref)
+      .then(res => setData({
+        referenceNumber: res.data.referenceNumber,
+        name:            res.data.name,
+        assistanceType:  res.data.assistanceType,
+        amountAssigned:  res.data.amountAssigned
+      }))
+      .catch(() => navigate("/check-status"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if(loading){
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500">No submission data found.</p>
-          <Link to="/" className="text-red-600 text-sm mt-2 block">Go back</Link>
-        </div>
+        <p className="text-gray-400 text-sm">⏳ Loading your application…</p>
       </div>
     )
   }
+
+  if(!data) return null
 
   // ── QR code value links to status checker
   const qrValue = window.location.origin + "/check-status?ref=" + data.referenceNumber
@@ -63,7 +90,7 @@ function SuccessPage(){
               Application Submitted!
             </h1>
             <p className="text-gray-500 text-sm">
-              Your application has been received. Check your phone and email for confirmation.
+              Your application has been received. A confirmation email is on its way.
             </p>
           </div>
 
@@ -93,7 +120,7 @@ function SuccessPage(){
               </div>
               {data.amountAssigned > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Amount</span>
+                  <span className="text-gray-500">Amount (if approved)</span>
                   <span className="font-bold text-green-600">
                     ₱{Number(data.amountAssigned).toLocaleString()}
                   </span>
@@ -132,8 +159,11 @@ function SuccessPage(){
 
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700 mb-4">
-            📱 You will receive an SMS and email notification when your application is approved or rejected.
+            📧 You will receive an email notification when your application is approved or rejected.
             Please visit City Hall on your designated pay date with a valid ID and this QR code.
+            <span className="block mt-2 font-semibold">
+              💡 Take a screenshot of this page, or download the QR code below.
+            </span>
           </div>
 
           {/* Check status link */}
@@ -143,16 +173,6 @@ function SuccessPage(){
           >
             🔍 Check Application Status
           </Link>
-
-          {/* Staff login link */}
-          <div className="mt-4 text-center">
-            <Link
-              to="/staff/login"
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              Staff Login →
-            </Link>
-          </div>
 
         </div>
 

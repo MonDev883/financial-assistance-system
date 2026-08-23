@@ -572,7 +572,9 @@ function StaffDashboard(){
                         </p>
                         <div className="flex items-center gap-4">
                           <img
-                            src={`${API_URL}/uploads/${app.selfiePhotoPath.split(/[\\/]/).pop()}`}
+                            src={app.selfiePhotoPath.startsWith("http")
+                              ? app.selfiePhotoPath
+                              : `${API_URL}/uploads/${app.selfiePhotoPath.split(/[\\/]/).pop()}`}
                             alt="Applicant selfie"
                             onError={e => { e.target.onerror = null; e.target.src = "/placeholder-avatar.png" }}
                             className="w-24 h-24 object-cover rounded-full border-4 border-gray-200"

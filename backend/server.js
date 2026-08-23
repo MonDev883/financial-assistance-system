@@ -11,6 +11,10 @@ if(!process.env.MONGO_URI){
   process.exit(1)
 }
 
+if(!process.env.CLOUDINARY_NAME || !process.env.CLOUDINARY_KEY || !process.env.CLOUDINARY_SECRET){
+  console.error("❌ Cloudinary credentials are not set — selfie uploads will fail")
+}
+
 // ── Force DNS to use Google (fixes MongoDB Atlas SRV lookup)
 const dns = require("dns")
 dns.setServers(["8.8.8.8", "8.8.4.4"])
