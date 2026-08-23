@@ -798,6 +798,9 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
 
     const results = { success: 0, failed: 0, errors: [] }
 
+       // ── Phase 1: update every record first (fast, no network calls)
+    const approved = []
+
     for(const id of applicationIds){
       try {
         const application = await Application.findById(id)
@@ -821,21 +824,7 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
         application.reviewedAt     = new Date()
         await application.save()
 
-        // ── SMS only. The approval email is sent by batchRoutes once a
-        //    payout batch is assigned, when the date and time slot exist.
-        if(application.contactNumber){
-          const smsOk = await sendSMS(application.contactNumber,
-            "City Hall Financial Assistance\n" +
-            "Ref No: " + application.referenceNumber + "\n" +
-            "Status: APPROVED\n" +
-            "Amount: PHP " + Number(application.amountAssigned).toLocaleString() + "\n" +
-            "Payout schedule to follow."
-          )
-          if(!smsOk){
-            console.warn("⚠️ SMS not delivered for " + application.referenceNumber)
-          }
-        }
-
+        approved.push(application)
         results.success++
 
       } catch(err){
@@ -844,11 +833,29 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
       }
     }
 
+    // ── Phase 2: respond immediately, before any notifications
     res.json({
       message: results.success + " application(s) approved successfully." +
         (results.failed > 0 ? " " + results.failed + " failed." : ""),
       results
     })
+
+    // ── Phase 3: notify in the background. The response is already sent,
+    //    so nothing here may throw uncaught or attempt to respond again.
+    for(const app of approved){
+      if(!app.contactNumber) continue
+
+      const smsOk = await sendSMS(app.contactNumber,
+        "City Hall Financial Assistance\n" +
+        "Ref No: " + app.referenceNumber + "\n" +
+        "Status: APPROVED\n" +
+        "Amount: PHP " + Number(app.amountAssigned).toLocaleString() + "\n" +
+        "Payout schedule to follow."
+      )
+      if(!smsOk){
+        console.warn("⚠️ SMS not delivered for " + app.referenceNumber)
+      }
+    }
 
   } catch(err){
     console.error("Bulk approve error:", err)
