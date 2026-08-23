@@ -178,4 +178,17 @@ const applicationSchema = new mongoose.Schema({
   }
 }, { timestamps: true })
 
+// ── Indexes ────────────────────────────
+// Dashboard query: equality fields first, sort field last
+applicationSchema.index({ applicationWindow: 1, status: 1, submittedAt: -1 })
+
+// Analytics groups by barangay
+applicationSchema.index({ barangay: 1 })
+
+// Database-level duplicate prevention, case-insensitive
+applicationSchema.index(
+  { applicationWindow: 1, lastName: 1, firstName: 1, dateOfBirth: 1 },
+  { unique: true, collation: { locale: "en", strength: 2 } }
+)
+
 module.exports = mongoose.model("Application", applicationSchema)

@@ -29,6 +29,8 @@ function StaffDashboard(){
     remarks:         ""
   })
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [history, setHistory]             = useState(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [message, setMessage]             = useState("")
   const navigate                          = useNavigate()
   const location                          = useLocation()
@@ -91,10 +93,25 @@ function StaffDashboard(){
       remarks:         ""
     })
     setMessage("")
+    loadHistory(app._id)
+  }
+
+  async function loadHistory(id){
+    setHistory(null)
+    setHistoryLoading(true)
+    try {
+      const res = await API.get("/applications/history/" + id)
+      setHistory(res.data)
+    } catch(err){
+      console.error("History load failed:", err)
+    } finally {
+      setHistoryLoading(false)
+    }
   }
 
   function closeReview(){
     setReviewing(null)
+    setHistory(null)
     setMessage("")
   }
 
@@ -612,6 +629,42 @@ function StaffDashboard(){
                 </span>
               )}
             </p>
+
+            {/* Prior claim history */}
+            {historyLoading && (
+              <p className="text-xs text-gray-400 mb-4">Checking claim history…</p>
+            )}
+
+            {history && history.count > 0 && (
+              <div className="mb-5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                <p className="text-sm font-bold text-amber-800 mb-2">
+                  ⚠️ {history.count} prior application{history.count > 1 ? "s" : ""}
+                  {history.totalReceived > 0 && (
+                    <span className="font-normal">
+                      {" "}— received ₱{Number(history.totalReceived).toLocaleString()} to date
+                    </span>
+                  )}
+                </p>
+                <div className="space-y-1">
+                  {history.claims.map(c => (
+                    <div key={c.referenceNumber} className="text-xs text-amber-900 flex justify-between gap-3">
+                      <span className="truncate">
+                        {c.window} · {c.assistanceType}
+                      </span>
+                      <span className="flex-shrink-0 font-semibold">
+                        {c.status.toUpperCase()}
+                        {c.status === "paid" && " ₱" + Number(c.amount).toLocaleString()}
+                        {" · " + formatDate(c.date)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {history && history.count === 0 && (
+              <p className="text-xs text-green-600 mb-4">✓ No prior applications on record</p>
+            )}
 
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Decision</label>

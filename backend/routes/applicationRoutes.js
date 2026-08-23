@@ -153,6 +153,44 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
         })
       }
 
+            // ── LINE 4c ── Cooling-off: 3 months must pass since the last payout
+      const nameFilter = {
+        firstName:   { $regex: new RegExp("^" + escapeRegex(firstName) + "$", "i") },
+        lastName:    { $regex: new RegExp("^" + escapeRegex(lastName) + "$", "i") },
+        dateOfBirth: dateOfBirth
+      }
+
+      const lastPaid = await Application.findOne({
+        ...nameFilter,
+        status: "paid"
+      }).sort({ paidAt: -1, payDate: -1 })
+
+      if(lastPaid){
+        const paidOn = lastPaid.paidAt || lastPaid.payDate || lastPaid.reviewedAt
+
+        if(paidOn){
+          const eligibleOn = new Date(paidOn)
+          eligibleOn.setMonth(eligibleOn.getMonth() + 3)
+
+          if(now < eligibleOn){
+            cleanupUpload(req)
+
+            const fmt = d => new Date(d).toLocaleDateString("en-PH", {
+              year: "numeric", month: "long", day: "numeric"
+            })
+
+            return res.status(400).json({
+              message: "Thank you for your interest. Our records show you received " +
+                "assistance on " + fmt(paidOn) + " (Ref: " + lastPaid.referenceNumber + "). " +
+                "To help us serve as many families as possible, applicants may reapply " +
+                "three months after their last payout. You will be eligible again on " +
+                fmt(eligibleOn) + ". If your situation is urgent, please visit City Hall."
+            })
+          }
+        }
+      }
+
+
  const refNum = "FA-" + new Date().getFullYear() + "-" +
   Date.now().toString(36).toUpperCase().slice(-5)
 
@@ -254,6 +292,57 @@ router.get("/all", protectStaff, async (req, res) => {
     res.json(applications)
   } catch(err){
     res.status(500).json({ message: "Failed to load applications" })
+  }
+})
+
+// ========================
+// CLAIM HISTORY FOR ONE APPLICANT (STAFF)
+// ========================
+router.get("/history/:id", protectStaff, async (req, res) => {
+  try {
+    const mongoose = require("mongoose")
+
+    if(!mongoose.Types.ObjectId.isValid(req.params.id)){
+      return res.status(400).json({ message: "Invalid application ID" })
+    }
+
+    const application = await Application.findById(req.params.id)
+
+    if(!application){
+      return res.status(404).json({ message: "Application not found" })
+    }
+
+    // ── Same person, any other window
+    const history = await Application.find({
+      _id:         { $ne: application._id },
+      firstName:   { $regex: new RegExp("^" + escapeRegex(application.firstName) + "$", "i") },
+      lastName:    { $regex: new RegExp("^" + escapeRegex(application.lastName) + "$", "i") },
+      dateOfBirth: application.dateOfBirth
+    })
+      .populate("applicationWindow", "title")
+      .sort({ submittedAt: -1 })
+      .limit(10)
+
+    const totalReceived = history
+      .filter(h => h.status === "paid")
+      .reduce((sum, h) => sum + (h.approvedAmount || 0), 0)
+
+    res.json({
+      count:         history.length,
+      totalReceived,
+      claims: history.map(h => ({
+        referenceNumber: h.referenceNumber,
+        window:          h.applicationWindow?.title || "—",
+        assistanceType:  h.assistanceType,
+        status:          h.status,
+        amount:          h.approvedAmount || h.amountAssigned || 0,
+        date:            h.paidAt || h.payDate || h.submittedAt
+      }))
+    })
+
+  } catch(err){
+    console.error("History error:", err)
+    res.status(500).json({ message: "Failed to load claim history" })
   }
 })
 
