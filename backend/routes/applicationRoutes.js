@@ -59,6 +59,13 @@ function cleanupUpload(req){
 // ── Escape user input before putting it in a RegExp
 const escapeRegex = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
+// ── Store phone numbers in one canonical format (09XXXXXXXXX)
+function normalizePhone(p){
+  let n = String(p || "").replace(/\D/g, "")
+  if(n.startsWith("63")) n = "0" + n.slice(2)
+  return n
+}
+
 // ========================
 // SUBMIT APPLICATION (PUBLIC)
 // ========================
@@ -211,7 +218,7 @@ router.post("/submit/:windowId", upload.single("selfie"), async (req, res) => {
       city,
       province,
       zipCode,
-      contactNumber,
+      contactNumber:     normalizePhone(contactNumber),
       email:             email || "",
       assistanceType,
       selfiePhotoPath:   req.file.filename,

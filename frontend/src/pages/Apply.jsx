@@ -54,7 +54,16 @@ function ApplyForm(){
   }
 
   function handleChange(e){
-    setForm({ ...form, [e.target.name]: e.target.value })
+    let value = e.target.value
+
+    // ── Strip formatting from phone numbers as the user types
+    if(e.target.name === "contactNumber"){
+      value = value.replace(/[\s-()]/g, "")
+      if(value.startsWith("+63")) value = "0" + value.slice(3)
+      else if(value.startsWith("63") && value.length > 10) value = "0" + value.slice(2)
+    }
+
+    setForm({ ...form, [e.target.name]: value })
   }
 
   async function handleSubmit(e){
@@ -339,6 +348,8 @@ function ApplyForm(){
                     </label>
                     <input className={inputClass} name="contactNumber"
                       placeholder="e.g. 09171234567"
+                      pattern="^(09|\+639)\d{9}$"
+                      title="Format: 09XXXXXXXXX or +639XXXXXXXXX"
                       value={form.contactNumber} onChange={handleChange} />
                   </div>
 

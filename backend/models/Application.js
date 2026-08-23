@@ -85,8 +85,9 @@ const applicationSchema = new mongoose.Schema({
 
   // ── Contact ───────────────────────────
   contactNumber: {
-    type: String,
-    required: true
+    type:     String,
+    required: true,
+    match:    [/^(09|\+639)\d{9}$/, "Invalid Philippine mobile number"]
   },
 
     email: {
