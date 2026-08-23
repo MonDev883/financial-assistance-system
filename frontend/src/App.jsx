@@ -18,8 +18,8 @@ function App(){
     <BrowserRouter>
       <Routes>
 
-        {/* ── Default ── */}
-        <Route path="/" element={<Navigate to="/staff/login" />} />
+        {/* ── Default — public status checker is the front door ── */}
+        <Route path="/" element={<Navigate to="/check-status" />} />
 
         {/* ── Public application form ── */}
         <Route path="/apply/:windowId" element={<ApplyForm />} />
@@ -33,6 +33,8 @@ function App(){
         <Route path="/staff/accounts"  element={<StaffManager />} />
         <Route path="/staff/analytics/:windowId" element={<Analytics />} />
         <Route path="/staff/batches/:windowId"   element={<BatchManager />} />
+        {/* ── Catch-all for mistyped or outdated URLs ── */}
+        <Route path="*" element={<Navigate to="/check-status" />} />
 
       </Routes>
     </BrowserRouter>

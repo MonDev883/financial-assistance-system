@@ -155,7 +155,8 @@ router.put("/assign", protectStaff, async (req, res) => {
       month: "long", day: "numeric"
     })
 
-    const results = { success: 0, failed: 0 }
+    const results  = { success: 0, failed: 0 }
+    const assigned = []
 
     for(const id of applicationIds){
       try {
@@ -176,47 +177,7 @@ router.put("/assign", protectStaff, async (req, res) => {
         application.payDate     = batch.payDate
         await application.save()
 
-       
-
-              // ── Format times to 12-hour
-        const startFormatted = formatTime(batch.startTime)
-        const endFormatted   = formatTime(batch.endTime)
-
-        // ── Send SMS with batch details
-        if(application.contactNumber){
-          const smsMessage =
-            "City Hall Financial Assistance\n" +
-            "Ref No: " + application.referenceNumber + "\n" +
-            "PAYOUT SCHEDULE\n" +
-            "Batch: " + batch.batchName + "\n" +
-            "Date: " + new Date(batch.payDate).toLocaleDateString("en-PH") + "\n" +
-            "Time: " + startFormatted + " - " + endFormatted + "\n" +
-            "Please be on time. Bring valid ID." +
-            (batch.notes ? "\nNote: " + batch.notes : "")
-
-          const smsOk = await sendSMS(application.contactNumber, smsMessage)
-          if(!smsOk){
-            console.warn("⚠️ Batch SMS not delivered for " + application.referenceNumber)
-          }
-        }
-
-        // ── Send email with batch details
-               {
-          const emailOk = await sendApprovalEmail(application.email, {
-              referenceNumber: application.referenceNumber,
-              name:            application.firstName + " " + application.lastName,
-              assistanceType:  application.assistanceType,
-              approvedAmount:  application.approvedAmount || application.amountAssigned,
-              payDate:         payDateFormatted,
-              timeSlot:        startFormatted + " – " + endFormatted,
-              batchName:       batch.batchName,
-              remarks:         batch.notes || ""
-              })
-          if(application.email && !emailOk){
-            console.warn("⚠️ Batch email not delivered for " + application.referenceNumber)
-          }
-        }
-
+        assigned.push(application)
         results.success++
 
       } catch(err){
@@ -225,11 +186,50 @@ router.put("/assign", protectStaff, async (req, res) => {
       }
     }
 
+    // ── Respond immediately, before any notifications
     res.json({
       message: results.success + " applicant(s) assigned to " + batch.batchName + " successfully." +
         (results.failed > 0 ? " " + results.failed + " failed." : ""),
       results
     })
+
+    // ── Notify in the background. The response is already sent, so nothing
+    //    here may throw uncaught or attempt to respond again.
+    const startFormatted = formatTime(batch.startTime)
+    const endFormatted   = formatTime(batch.endTime)
+
+    for(const app of assigned){
+      if(app.contactNumber){
+        const smsMessage =
+          "City Hall Financial Assistance\n" +
+          "Ref No: " + app.referenceNumber + "\n" +
+          "PAYOUT SCHEDULE\n" +
+          "Batch: " + batch.batchName + "\n" +
+          "Date: " + new Date(batch.payDate).toLocaleDateString("en-PH") + "\n" +
+          "Time: " + startFormatted + " - " + endFormatted + "\n" +
+          "Please be on time. Bring valid ID." +
+          (batch.notes ? "\nNote: " + batch.notes : "")
+
+        const smsOk = await sendSMS(app.contactNumber, smsMessage)
+        if(!smsOk){
+          console.warn("⚠️ Batch SMS not delivered for " + app.referenceNumber)
+        }
+      }
+
+      const emailOk = await sendApprovalEmail(app.email, {
+        referenceNumber: app.referenceNumber,
+        name:            app.firstName + " " + app.lastName,
+        assistanceType:  app.assistanceType,
+        approvedAmount:  app.approvedAmount || app.amountAssigned,
+        payDate:         payDateFormatted,
+        timeSlot:        startFormatted + " – " + endFormatted,
+        batchName:       batch.batchName,
+        remarks:         batch.notes || ""
+      })
+      if(app.email && !emailOk){
+        console.warn("⚠️ Batch email not delivered for " + app.referenceNumber)
+      }
+    }
 
   } catch(err){
     console.error("Assign batch error:", err)

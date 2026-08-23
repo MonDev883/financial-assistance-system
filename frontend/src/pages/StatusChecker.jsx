@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { QRCodeSVG } from "qrcode.react"
 import API from "../api"
+import html2canvas from "html2canvas-pro"
+
+// ── Convert 24-hour time to 12-hour AM/PM
+function formatTime(time24){
+  if(!time24) return "—"
+  const [hourStr, minute] = time24.split(":")
+  let hour = parseInt(hourStr)
+  const ampm = hour >= 12 ? "PM" : "AM"
+  hour = hour % 12 || 12
+  return hour + ":" + minute + " " + ampm
+}
 
 function StatusChecker(){
 
@@ -43,7 +55,12 @@ function StatusChecker(){
       return
     }
 
-    await checkStatus(refNum.trim())
+    const ref = refNum.trim()
+
+    // ── Put the reference in the URL so bookmarks and refreshes work
+    window.history.replaceState(null, "", "?ref=" + encodeURIComponent(ref))
+
+    await checkStatus(ref)
   }
 
   function getStatusStyle(status){
@@ -69,6 +86,11 @@ function StatusChecker(){
       case "pending":
         return "Your application is currently being reviewed by City Hall staff. Please wait for an update."
       case "approved":
+        if(!result.payDate){
+          return "Your application has been approved! Your payout schedule is being " +
+            "prepared. You will receive an SMS and email once your date and time slot " +
+            "are assigned."
+        }
         return "Your application has been approved! Please visit City Hall on " +
           new Date(result.payDate).toLocaleDateString("en-PH", {
             weekday: "long", year: "numeric",
@@ -85,11 +107,11 @@ function StatusChecker(){
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center p-5">
+        <div className="min-h-screen bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center p-5 print-root">
       <div className="w-full max-w-md">
 
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 no-print">
           <h1 className="text-2xl font-bold text-white mb-2">
             🏛️ City Hall Financial Assistance
           </h1>
@@ -99,7 +121,7 @@ function StatusChecker(){
         </div>
 
         {/* Search card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div id="status-card" className="bg-white rounded-2xl shadow-2xl p-8 print-area">
 
           <h2 className="text-lg font-bold text-gray-800 mb-1">
             Check Your Application
@@ -108,7 +130,7 @@ function StatusChecker(){
             Enter your reference number to check the status of your application.
           </p>
 
-          <form onSubmit={handleCheck} className="flex gap-2 mb-4">
+          <form onSubmit={handleCheck} className="flex gap-2 mb-4 no-print">
             <input
               className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 uppercase"
               placeholder="e.g. FA-2026-00001"
@@ -169,7 +191,9 @@ function StatusChecker(){
 
                 {result.amountAssigned > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Amount</span>
+                    <span className="text-gray-500">
+                      {result.status === "pending" ? "Amount (if approved)" : "Approved Amount"}
+                    </span>
                     <span className="font-bold text-green-600">
                       ₱{Number(result.approvedAmount || result.amountAssigned).toLocaleString()}
                     </span>
@@ -210,7 +234,7 @@ function StatusChecker(){
                         })}
                       </p>
                       <p className="text-sm text-gray-700">
-                        🕐 {result.batch.startTime} – {result.batch.endTime}
+                        🕐 {formatTime(result.batch.startTime)} – {formatTime(result.batch.endTime)}
                       </p>
                       {result.batch.notes && (
                         <p className="text-xs text-gray-500">
@@ -219,6 +243,18 @@ function StatusChecker(){
                       )}
                       <p className="text-xs text-red-600 font-semibold mt-2">
                         ⚠️ Please be at City Hall on time. Bring a valid ID and your reference number.
+                      </p>
+                    </div>
+
+                    {/* QR code for the payout desk */}
+                    <div className="flex flex-col items-center mt-4 pt-4 border-t border-gray-200">
+                      <QRCodeSVG
+                        value={window.location.origin + "/check-status?ref=" + result.referenceNumber}
+                        size={130}
+                        level="M"
+                      />
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Show this code at the payout desk
                       </p>
                     </div>
                   </div>
@@ -233,6 +269,22 @@ function StatusChecker(){
 
               </div>
 
+              {/* What happens next — pending only */}
+              {result.status === "pending" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-700 no-print">
+                  Applications are usually reviewed within 5 working days. You'll receive
+                  an SMS and email as soon as a decision is made.
+                </div>
+              )}
+
+              {/* Print */}
+              <button
+                onClick={() => window.print()}
+                className="w-full py-3 rounded-lg border border-gray-300 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition no-print"
+              >
+                🖨️ Print / Save as PDF
+              </button>
+
               {/* Remarks */}
               {result.remarks && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
@@ -246,9 +298,12 @@ function StatusChecker(){
 
           {/* Back link */}
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-500 mb-2">
+              Questions? Visit City Hall, Monday–Friday, 8:00 AM – 5:00 PM.
+            </p>
             <Link
               to="/staff/login"
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-gray-400 hover:text-gray-600 no-print"
             >
               Staff Login →
             </Link>
@@ -257,7 +312,7 @@ function StatusChecker(){
         </div>
 
         <p className="text-center text-red-200 text-xs mt-4">
-          Bookmark this page to check your status anytime
+          Bookmark this page after checking — your reference number is saved in the link.
         </p>
 
       </div>
