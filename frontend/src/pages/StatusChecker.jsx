@@ -123,12 +123,14 @@ function StatusChecker(){
         {/* Search card */}
         <div id="status-card" className="bg-white rounded-2xl shadow-2xl p-8 print-area">
 
-          <h2 className="text-lg font-bold text-gray-800 mb-1">
-            Check Your Application
-          </h2>
-          <p className="text-gray-500 text-sm mb-6">
-            Enter your reference number to check the status of your application.
-          </p>
+          <div className="no-print">
+            <h2 className="text-lg font-bold text-gray-800 mb-1">
+              Check Your Application
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Enter your reference number to check the status of your application.
+            </p>
+          </div>
 
           <form onSubmit={handleCheck} className="flex gap-2 mb-4 no-print">
             <input
@@ -159,6 +161,14 @@ function StatusChecker(){
           {/* Result */}
           {result && (
             <div className="space-y-4">
+
+              {/* Print-only header — the page header is hidden when printing */}
+              <div className="hidden print:block text-center mb-4 pb-3 border-b border-gray-300">
+                <p className="font-bold text-gray-800">
+                  🏛️ City Hall Financial Assistance
+                </p>
+                <p className="text-xs text-gray-500">Payout Claim Slip</p>
+              </div>
 
               {/* Status badge */}
               <div className={"border rounded-xl px-5 py-4 " + getStatusStyle(result.status)}>
@@ -311,7 +321,7 @@ function StatusChecker(){
 
         </div>
 
-        <p className="text-center text-red-200 text-xs mt-4">
+        <p className="text-center text-red-200 text-xs mt-4 no-print">
           Bookmark this page after checking — your reference number is saved in the link.
         </p>
 
