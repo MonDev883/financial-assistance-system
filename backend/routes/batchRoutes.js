@@ -4,6 +4,7 @@ const PayoutBatch  = require("../models/PayoutBatch")
 const Application  = require("../models/Application")
 const { protectStaff } = require("../middleware/authMiddleware")
 const { sendSMS }  = require("../services/smsService")
+const { recordAudit } = require("../services/auditService")
 const {
   sendApprovalEmail
 } = require("../services/emailService")
@@ -59,6 +60,18 @@ router.post("/create", protectStaff, async (req, res) => {
       barangay:     barangay || "",
       notes:        notes || "",
       createdBy:    req.staff.id
+    })
+
+    recordAudit(req, {
+      action:      "batch_created",
+      targetType:  "PayoutBatch",
+      targetId:    batch._id,
+      targetLabel: batch.batchName,
+      details: {
+        payDate:     batch.payDate,
+        timeSlot:    batch.startTime + " - " + batch.endTime,
+        maxCapacity: batch.maxCapacity
+      }
     })
 
     res.status(201).json({
@@ -186,6 +199,17 @@ router.put("/assign", protectStaff, async (req, res) => {
       }
     }
 
+    recordAudit(req, {
+      action:      "batch_assigned",
+      targetType:  "PayoutBatch",
+      targetId:    batch._id,
+      targetLabel: batch.batchName,
+      details: {
+        count:      results.success,
+        references: assigned.map(a => a.referenceNumber)
+      }
+    })
+
     // ── Respond immediately, before any notifications
     res.json({
       message: results.success + " applicant(s) assigned to " + batch.batchName + " successfully." +
@@ -248,9 +272,19 @@ router.put("/remove/:applicationId", protectStaff, async (req, res) => {
       return res.status(404).json({ message: "Application not found" })
     }
 
+    const previousBatch = application.payoutBatch
+
     application.payoutBatch = null
     application.payDate     = null
     await application.save()
+
+    recordAudit(req, {
+      action:      "batch_removed",
+      targetType:  "Application",
+      targetId:    application._id,
+      targetLabel: application.referenceNumber,
+      details: { previousBatch }
+    })
 
     res.json({ message: "Removed from batch successfully" })
 

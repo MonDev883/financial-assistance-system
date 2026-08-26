@@ -470,10 +470,21 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
       })
     }
 
-       application.status = "paid"
+    application.status = "paid"
     application.paidAt = new Date()
     application.paidBy = req.staff.id
     await application.save()
+
+    recordAudit(req, {
+      action:      "application_paid",
+      targetType:  "Application",
+      targetId:    application._id,
+      targetLabel: application.referenceNumber,
+      details: {
+        amount: application.approvedAmount,
+        batch:  application.payoutBatch || null
+      }
+    })
 
     recordAudit(req, {
       action:      "application_paid",
@@ -867,6 +878,17 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
         references: approved.map(a => a.referenceNumber)
       }
     })
+    recordAudit(req, {
+      action:      "bulk_approved",
+      targetType:  "Application",
+      targetLabel: results.success + " applications",
+      details: {
+        count:      results.success,
+        failed:     results.failed,
+        references: approved.map(a => a.referenceNumber)
+      }
+    })
+
     // ── Phase 2: respond immediately, before any notifications
     res.json({
       message: results.success + " application(s) approved successfully." +
