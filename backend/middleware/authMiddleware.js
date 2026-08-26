@@ -45,7 +45,12 @@ const buildStaffGuard = (requireAdmin = false) => async (req, res, next) => {
       return res.status(403).json({ message: "Access denied. Admins only." })
     }
 
-    req.staff = { id: staff._id, role: staff.role, fullName: staff.fullName }
+    req.staff = {
+      id:       staff._id,
+      role:     staff.role,
+      fullName: staff.fullName,
+      email:    staff.email
+    }
     next()
 
   } catch(err){

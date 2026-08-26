@@ -6,7 +6,7 @@
 
   body { background: white !important; }
 
-  .print-root {
+    .print-root {
     min-height: 0 !important;
     padding: 0 !important;
     background: white !important;
@@ -16,7 +16,8 @@
   .print-area {
     box-shadow: none !important;
     padding: 0 !important;
-    max-width: 100% !important;
+    max-width: 480px !important;
+    margin: 0 auto !important;
     page-break-inside: avoid;
   }
 }

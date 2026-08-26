@@ -4,6 +4,7 @@ const Application = require("../models/Application")
 const ApplicationWindow = require("../models/ApplicationWindow")
 const { protectStaff } = require("../middleware/authMiddleware")
 const { sendSMS } = require("../services/smsService")
+const { recordAudit } = require("../services/auditService")
 const {
   sendSubmissionEmail,
   sendApprovalEmail,
@@ -395,6 +396,19 @@ router.put("/review/:id", protectStaff, async (req, res) => {
 
     await application.save()
 
+    recordAudit(req, {
+      action:      status === "approved" ? "application_approved" : "application_rejected",
+      targetType:  "Application",
+      targetId:    application._id,
+      targetLabel: application.referenceNumber,
+      details: {
+        assistanceType: application.assistanceType,
+        amount:         application.approvedAmount,
+        reason:         status === "rejected" ? (rejectionReason || "") : undefined,
+        remarks:        remarks || ""
+      }
+    })
+
     // ── Send SMS notification
     if(application.contactNumber){
         let smsMessage = ""
@@ -460,6 +474,17 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
     application.paidAt = new Date()
     application.paidBy = req.staff.id
     await application.save()
+
+    recordAudit(req, {
+      action:      "application_paid",
+      targetType:  "Application",
+      targetId:    application._id,
+      targetLabel: application.referenceNumber,
+      details: {
+        amount: application.approvedAmount,
+        batch:  application.payoutBatch || null
+      }
+    })
 
     if(application.contactNumber){
             {
@@ -832,6 +857,16 @@ router.put("/bulk-approve", protectStaff, async (req, res) => {
       }
     }
 
+    recordAudit(req, {
+      action:      "bulk_approved",
+      targetType:  "Application",
+      targetLabel: results.success + " applications",
+      details: {
+        count:      results.success,
+        failed:     results.failed,
+        references: approved.map(a => a.referenceNumber)
+      }
+    })
     // ── Phase 2: respond immediately, before any notifications
     res.json({
       message: results.success + " application(s) approved successfully." +
