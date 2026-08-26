@@ -4,6 +4,7 @@ const bcrypt  = require("bcrypt")
 const jwt     = require("jsonwebtoken")
 const Staff   = require("../models/Staff")
 const { protectStaff, protectAdmin } = require("../middleware/authMiddleware")
+const { recordAudit } = require("../services/auditService")
 
 // ========================
 // STAFF LOGIN
@@ -108,6 +109,14 @@ router.post("/create", protectAdmin, async (req, res) => {
       email,
       password,
       role: role || "staff"
+    })
+
+    recordAudit(req, {
+      action:      "staff_created",
+      targetType:  "Staff",
+      targetId:    staff._id,
+      targetLabel: staff.email,
+      details:     { role: staff.role }
     })
 
     res.status(201).json({

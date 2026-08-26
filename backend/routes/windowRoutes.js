@@ -4,6 +4,7 @@ const mongoose = require("mongoose")
 const ApplicationWindow = require("../models/ApplicationWindow")
 const Application       = require("../models/Application")
 const { protectStaff, protectAdmin } = require("../middleware/authMiddleware")
+const { recordAudit } = require("../services/auditService")
 
 // ========================
 // GET CURRENT ACTIVE WINDOW
@@ -156,6 +157,18 @@ router.post("/create", protectAdmin, async (req, res) => {
       createdBy:   req.staff.id
     })
 
+    recordAudit(req, {
+      action:      "window_created",
+      targetType:  "ApplicationWindow",
+      targetId:    window._id,
+      targetLabel: window.title,
+      details: {
+        startDate: window.startDate,
+        endDate:   window.endDate,
+        amounts:   window.amounts
+      }
+    })
+
     res.status(201).json({
       message: "Application window created",
       window
@@ -238,6 +251,14 @@ router.put("/update/:id", protectAdmin, async (req, res) => {
       { new: true, runValidators: true }
     )
 
+    recordAudit(req, {
+      action:      "window_updated",
+      targetType:  "ApplicationWindow",
+      targetId:    window._id,
+      targetLabel: window.title,
+      details:     { changed: Object.keys(updates) }
+    })
+
     res.json({ message: "Window updated", window })
 
   } catch(err){
@@ -264,6 +285,14 @@ router.put("/close/:id", protectAdmin, async (req, res) => {
     const pendingCount = await Application.countDocuments({
       applicationWindow: req.params.id,
       status:            "pending"
+    })
+
+    recordAudit(req, {
+      action:      "window_closed",
+      targetType:  "ApplicationWindow",
+      targetId:    window._id,
+      targetLabel: window.title,
+      details:     { pendingAtClose: pendingCount }
     })
 
     res.json({
