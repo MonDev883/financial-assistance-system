@@ -42,6 +42,9 @@ from the public demo deliberately.
 | Payout batch manager | Status checker |
 |---|---|
 | ![Batch manager](docs/screenshots/batch-manager.png) | ![Status checker](docs/screenshots/status-checker.png) |
+| Payout batch manager | Audit log |
+|---|---|
+| ![Batch manager](docs/screenshots/batch-manager.png) | ![Audit log](docs/screenshots/audit-log.png) |
 
 ---
 
