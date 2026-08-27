@@ -272,12 +272,20 @@ function StaffDashboard(){
             📅 Windows
           </Link>
           {JSON.parse(localStorage.getItem("staff") || "{}").role === "admin" && (
-            <Link
-              to="/staff/accounts"
-              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-            >
-              👥 Staff
-            </Link>
+            <>
+              <Link
+                to="/staff/accounts"
+                className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                👥 Staff
+              </Link>
+              <Link
+                to="/staff/audit"
+                className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                📋 Audit
+              </Link>
+            </>
           )}
           <span className="text-sm hidden sm:block">
             👤 {staff?.fullName}

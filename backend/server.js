@@ -77,6 +77,7 @@ app.use("/api/applications", require("./routes/applicationRoutes"))
 app.use("/api/staff",        require("./routes/staffRoutes"))
 app.use("/api/windows",      require("./routes/windowRoutes"))
 app.use("/api/batches",      require("./routes/batchRoutes"))
+app.use("/api/audit",        require("./routes/auditRoutes"))
 
 // ── Health check
 app.get("/health", (req, res) => {
