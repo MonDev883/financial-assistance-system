@@ -470,6 +470,14 @@ router.put("/paid/:id", protectStaff, async (req, res) => {
       })
     }
 
+    // ── Attendance must be recorded first, so "paid" reflects what happened
+    //    at the desk rather than an assumption
+    if(application.payoutBatch && !application.attendedAt){
+      return res.status(400).json({
+        message: "Mark the applicant present before recording payment"
+      })
+    }
+
     application.status = "paid"
     application.paidAt = new Date()
     application.paidBy = req.staff.id

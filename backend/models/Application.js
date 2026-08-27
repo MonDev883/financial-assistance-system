@@ -168,6 +168,15 @@ const applicationSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  attendedAt: {
+    type: Date,
+    default: null
+  },
+  attendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Staff",
+    default: null
+  },
   paidAt: {
     type: Date,
     default: null

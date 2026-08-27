@@ -22,6 +22,8 @@ const auditLogSchema = new mongoose.Schema({
       "batch_created",
       "batch_assigned",
       "batch_removed",
+      "attendance_marked",
+      "attendance_cleared",
       "window_created",
       "window_updated",
       "window_closed",

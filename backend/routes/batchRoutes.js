@@ -126,7 +126,9 @@ router.get("/:id/applicants", protectStaff, async (req, res) => {
       payoutBatch: req.params.id
     }).sort({ lastName: 1 })
 
-    res.json({ batch, applicants })
+    const presentCount = applicants.filter(a => a.attendedAt).length
+
+    res.json({ batch, applicants, presentCount })
 
   } catch(err){
     res.status(500).json({ message: "Failed to load batch applicants" })
@@ -258,6 +260,55 @@ router.put("/assign", protectStaff, async (req, res) => {
   } catch(err){
     console.error("Assign batch error:", err)
     res.status(500).json({ message: "Failed to assign batch" })
+  }
+})
+
+// ========================
+// TOGGLE ATTENDANCE AT THE PAYOUT DESK (STAFF)
+// ========================
+router.put("/attendance/:applicationId", protectStaff, async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.applicationId)
+
+    if(!application){
+      return res.status(404).json({ message: "Application not found" })
+    }
+
+    if(!application.payoutBatch){
+      return res.status(400).json({
+        message: "This applicant is not assigned to a batch yet"
+      })
+    }
+
+    if(application.status === "paid"){
+      return res.status(400).json({
+        message: "Already marked as paid — attendance can no longer be changed"
+      })
+    }
+
+    // ── Toggle
+    const marking = !application.attendedAt
+
+    application.attendedAt = marking ? new Date() : null
+    application.attendedBy = marking ? req.staff.id : null
+    await application.save()
+
+    recordAudit(req, {
+      action:      marking ? "attendance_marked" : "attendance_cleared",
+      targetType:  "Application",
+      targetId:    application._id,
+      targetLabel: application.referenceNumber,
+      details:     { batch: application.payoutBatch }
+    })
+
+    res.json({
+      message:    marking ? "Marked as present" : "Attendance cleared",
+      attendedAt: application.attendedAt
+    })
+
+  } catch(err){
+    console.error("Attendance error:", err)
+    res.status(500).json({ message: "Failed to update attendance" })
   }
 })
 
