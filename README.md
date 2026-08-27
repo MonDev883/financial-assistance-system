@@ -80,6 +80,10 @@ from the public demo deliberately.
   assignment, and window change recorded with the staff member, timestamp, and
   IP address; filterable by staff, action, date range, and reference number
 
+- **Attendance tracking** — staff mark applicants present at the payout desk;
+  payment cannot be recorded until attendance is, so "paid" reflects what
+  happened at the table rather than an assumption
+
 ### Business rules enforced
 
 - Applicants must be 18 or over
@@ -169,6 +173,18 @@ the missing entry.
 
 Read access is admin-only. Regular staff shouldn't be able to review each
 other's decisions.
+
+### Payment can't be recorded before attendance
+
+Marking someone paid was originally a single click, which meant the record said
+a payment happened without anything confirming the person was there.
+
+Attendance is now a separate step, and the payment route rejects any batched
+applicant who hasn't been marked present. It also gives the office a no-show
+rate, useful for sizing the next payout day.
+
+Attendance can't be changed once payment is recorded — an audit trail that can
+be edited after the fact isn't one.
 
 ### Images live off the server
 
@@ -279,7 +295,7 @@ frontend/src/
 ## 🗺️ Roadmap
 
 
-- Attendance tracking at the payout desk
+
 - Per-window budget ceilings with warnings as approvals approach the limit
 - Tagalog / English toggle on public pages
 - Migrate `dateOfBirth` from string to date for age-bracket analytics

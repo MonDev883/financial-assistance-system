@@ -30,6 +30,8 @@ function BatchManager(){
   const [assigning, setAssigning]     = useState(false)
   const [viewBatch, setViewBatch]     = useState(null)
   const [batchApplicants, setBatchApplicants] = useState([])
+  const [presentCount, setPresentCount] = useState(0)
+  const [markingId, setMarkingId]     = useState(null)
 
   const [form, setForm] = useState({
     batchName:   "",
@@ -149,8 +151,21 @@ function BatchManager(){
       const res = await API.get("/batches/" + batch._id + "/applicants")
       setViewBatch(res.data.batch)
       setBatchApplicants(res.data.applicants)
+      setPresentCount(res.data.presentCount || 0)
     } catch(err){
       console.error("View batch error:", err)
+    }
+  }
+
+  async function toggleAttendance(app){
+    setMarkingId(app._id)
+    try {
+      await API.put("/batches/attendance/" + app._id)
+      if(viewBatch) await viewBatchApplicants(viewBatch)
+    } catch(err){
+      alert(err.response?.data?.message || "Failed to update attendance")
+    } finally {
+      setMarkingId(null)
     }
   }
 
@@ -595,8 +610,19 @@ function BatchManager(){
                   ✕
                 </button>
               </div>
-              <div className="mt-3 bg-red-700 rounded-lg px-4 py-2 text-sm">
-                {batchApplicants.length} of {viewBatch.maxCapacity} slots filled
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <div className="bg-red-700 rounded-lg px-4 py-2 text-sm">
+                  {batchApplicants.length} of {viewBatch.maxCapacity} slots filled
+                </div>
+                {batchApplicants.length > 0 && (
+                  <div className={"rounded-lg px-4 py-2 text-sm font-semibold " + (
+                    presentCount === batchApplicants.length
+                      ? "bg-green-600"
+                      : "bg-red-800"
+                  )}>
+                    ✓ {presentCount} of {batchApplicants.length} present
+                  </div>
+                )}
               </div>
             </div>
 
@@ -627,12 +653,31 @@ function BatchManager(){
                           )}
                         </p>
                       </div>
-                      <button
-                        onClick={() => removeFromBatch(app._id)}
-                        className="text-xs text-red-500 hover:text-red-700 font-semibold flex-shrink-0"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {app.status === "paid" ? (
+                          <span className="text-xs font-semibold text-blue-600">💵 Paid</span>
+                        ) : (
+                          <button
+                            onClick={() => toggleAttendance(app)}
+                            disabled={markingId === app._id}
+                            className={"text-xs font-semibold px-3 py-1.5 rounded-lg border transition " + (
+                              markingId === app._id
+                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                : app.attendedAt
+                                  ? "bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
+                                  : "bg-white text-gray-500 border-gray-300 hover:bg-gray-100"
+                            )}
+                          >
+                            {app.attendedAt ? "✓ Present" : "Mark present"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => removeFromBatch(app._id)}
+                          className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
