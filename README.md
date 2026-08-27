@@ -73,6 +73,9 @@ from the public demo deliberately.
 - Analytics: totals by status, assistance type, barangay, gender, civil status,
   and submissions over time
 - Staff account management (admin only)
+- **Audit log** (admin only) — every approval, rejection, payment, batch
+  assignment, and window change recorded with the staff member, timestamp, and
+  IP address; filterable by staff, action, date range, and reference number
 
 ### Business rules enforced
 
@@ -147,6 +150,22 @@ committing fraud.
 The reviewer sees prior claims and their totals when they open an application.
 The decision stays human. The only automatic rule is the three-month cooling-off
 period, which is policy rather than a judgement call.
+
+### Every state change is recorded, and the record outlives the account
+
+A system that authorizes public money has to answer "who approved this, and
+when." The audit log records the staff member, action, target, timestamp, and IP
+for every state-changing operation.
+
+Two details that matter. The staff member's name and email are **copied into**
+each entry rather than referenced — an audit trail that says "deleted user" is
+not an audit trail. And audit writes are fire-and-forget: a logging failure is
+reported to the console but never breaks the operation being logged, because
+refusing to approve an application because the log is down would be worse than
+the missing entry.
+
+Read access is admin-only. Regular staff shouldn't be able to review each
+other's decisions.
 
 ### Images live off the server
 
@@ -256,7 +275,7 @@ frontend/src/
 
 ## 🗺️ Roadmap
 
-- Audit log of every state change, viewable by admins
+
 - Attendance tracking at the payout desk
 - Per-window budget ceilings with warnings as approvals approach the limit
 - Tagalog / English toggle on public pages
