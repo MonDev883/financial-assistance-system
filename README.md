@@ -45,6 +45,9 @@ from the public demo deliberately.
 | Payout batch manager | Audit log |
 |---|---|
 | ![Batch manager](docs/screenshots/batch-manager.png) | ![Audit log](docs/screenshots/audit-log.png) |
+| Attendance at payout | Audit log |
+|---|---|
+| ![Attendance](docs/screenshots/attendance.png) | ![Audit log](docs/screenshots/audit-log.png) |
 
 ---
 
