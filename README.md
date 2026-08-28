@@ -14,8 +14,8 @@ and City Hall staff a filing cabinet.
 
 | | |
 |---|---|
-| **Status Checker** | https://cute-gaufre-42f141.netlify.app/check-status |
-| **Staff Portal** | https://cute-gaufre-42f141.netlify.app/staff/login |
+| **Status Checker** | https://navotas-assistance-demo.netlify.app/check-status |
+| **Staff Portal** | https://navotas-assistance-demo.netlify.app/staff/login |
 | **Application Form** | Generated per window from the Staff Dashboard — copy the link from the Windows page |
 
 > ⏱️ **First load may take up to a minute.** The backend runs on Render's free
